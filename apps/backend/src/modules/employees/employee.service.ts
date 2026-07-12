@@ -1,0 +1,175 @@
+import { Prisma } from "@prisma/client";
+import { employeeRepository } from "@/modules/employees/employee.repository";
+import { toEmployeeResponseDto } from "@/modules/employees/employee.mapper";
+import {
+  CreateEmployeeDto,
+  EmployeeResponseDto,
+  ListEmployeesQuery,
+  UpdateEmployeeDto,
+} from "@/modules/employees/employee.dto";
+import { departmentRepository } from "@/modules/departments/department.repository";
+import { positionRepository } from "@/modules/positions/position.repository";
+import { BadRequestError, ConflictError, NotFoundError } from "@/shared/errors";
+import { PaginatedResult } from "@/shared/types/pagination.types";
+import { buildPaginatedResult } from "@/shared/utils/pagination.util";
+
+const MAX_CODE_GENERATION_ATTEMPTS = 5;
+
+async function assertDepartmentBelongsToCompany(departmentId: string, companyId: string): Promise<void> {
+  const department = await departmentRepository.findByIdInCompany(departmentId, companyId);
+  if (!department) {
+    throw new BadRequestError("The selected department does not belong to this company");
+  }
+}
+
+async function assertPositionBelongsToCompany(positionId: string, companyId: string): Promise<void> {
+  const position = await positionRepository.findByIdInCompany(positionId, companyId);
+  if (!position) {
+    throw new BadRequestError("The selected position does not belong to this company");
+  }
+}
+
+async function generateEmployeeCode(companyId: string): Promise<string> {
+  const count = await employeeRepository.countInCompany(companyId);
+  return `EMP-${String(count + 1).padStart(4, "0")}`;
+}
+
+export async function createEmployee(companyId: string, dto: CreateEmployeeDto): Promise<EmployeeResponseDto> {
+  if (dto.departmentId) {
+    await assertDepartmentBelongsToCompany(dto.departmentId, companyId);
+  }
+  if (dto.positionId) {
+    await assertPositionBelongsToCompany(dto.positionId, companyId);
+  }
+
+  if (dto.employeeCode) {
+    const existing = await employeeRepository.findByCodeInCompany(dto.employeeCode, companyId);
+    if (existing) {
+      throw new ConflictError("An employee with this employee code already exists");
+    }
+    const employee = await employeeRepository.create({
+      companyId,
+      employeeCode: dto.employeeCode,
+      firstName: dto.firstName,
+      lastName: dto.lastName,
+      email: dto.email,
+      phone: dto.phone,
+      departmentId: dto.departmentId,
+      positionId: dto.positionId,
+      employmentType: dto.employmentType,
+      contractedWeeklyHours: dto.contractedWeeklyHours,
+      hireDate: dto.hireDate,
+    });
+    return toEmployeeResponseDto(employee);
+  }
+
+  // Auto-generated codes can race under concurrent creation; retry a few
+  // times on a unique-constraint conflict before giving up.
+  for (let attempt = 0; attempt < MAX_CODE_GENERATION_ATTEMPTS; attempt += 1) {
+    const employeeCode = await generateEmployeeCode(companyId);
+    try {
+      const employee = await employeeRepository.create({
+        companyId,
+        employeeCode,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        email: dto.email,
+        phone: dto.phone,
+        departmentId: dto.departmentId,
+        positionId: dto.positionId,
+        employmentType: dto.employmentType,
+        contractedWeeklyHours: dto.contractedWeeklyHours,
+        hireDate: dto.hireDate,
+      });
+      return toEmployeeResponseDto(employee);
+    } catch (err) {
+      const isUniqueConflict = err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002";
+      if (!isUniqueConflict || attempt === MAX_CODE_GENERATION_ATTEMPTS - 1) {
+        throw err;
+      }
+    }
+  }
+
+  throw new ConflictError("Could not generate a unique employee code, please retry");
+}
+
+export async function getEmployeeByIdOrThrow(companyId: string, id: string): Promise<EmployeeResponseDto> {
+  const employee = await employeeRepository.findByIdInCompany(id, companyId);
+  if (!employee) {
+    throw new NotFoundError("Employee");
+  }
+  return toEmployeeResponseDto(employee);
+}
+
+export async function getOwnEmployeeProfileOrThrow(companyId: string, userId: string): Promise<EmployeeResponseDto> {
+  const employee = await employeeRepository.findByUserId(userId, companyId);
+  if (!employee) {
+    throw new NotFoundError("Employee profile for this account");
+  }
+  return toEmployeeResponseDto(employee);
+}
+
+export async function updateEmployee(
+  companyId: string,
+  id: string,
+  dto: UpdateEmployeeDto,
+): Promise<EmployeeResponseDto> {
+  const existing = await employeeRepository.findByIdInCompany(id, companyId);
+  if (!existing) {
+    throw new NotFoundError("Employee");
+  }
+
+  if (dto.departmentId) {
+    await assertDepartmentBelongsToCompany(dto.departmentId, companyId);
+  }
+  if (dto.positionId) {
+    await assertPositionBelongsToCompany(dto.positionId, companyId);
+  }
+
+  const updated = await employeeRepository.update(id, {
+    firstName: dto.firstName,
+    lastName: dto.lastName,
+    email: dto.email,
+    phone: dto.phone,
+    employmentType: dto.employmentType,
+    employmentStatus: dto.employmentStatus,
+    contractedWeeklyHours: dto.contractedWeeklyHours,
+    terminationDate: dto.terminationDate,
+    isActive: dto.isActive,
+    ...(dto.departmentId !== undefined
+      ? { department: dto.departmentId ? { connect: { id: dto.departmentId } } : { disconnect: true } }
+      : {}),
+    ...(dto.positionId !== undefined
+      ? { position: dto.positionId ? { connect: { id: dto.positionId } } : { disconnect: true } }
+      : {}),
+  });
+
+  return toEmployeeResponseDto(updated);
+}
+
+export async function listEmployees(
+  companyId: string,
+  query: ListEmployeesQuery,
+  restrictToUserId?: string,
+): Promise<PaginatedResult<EmployeeResponseDto>> {
+  const { items, total } = await employeeRepository.findMany(
+    {
+      companyId,
+      search: query.search,
+      departmentId: query.departmentId,
+      positionId: query.positionId,
+      employmentStatus: query.employmentStatus,
+      restrictToUserId,
+    },
+    query,
+  );
+  return buildPaginatedResult(items.map(toEmployeeResponseDto), query, total);
+}
+
+export async function deleteEmployee(companyId: string, id: string): Promise<void> {
+  const existing = await employeeRepository.findByIdInCompany(id, companyId);
+  if (!existing) {
+    throw new NotFoundError("Employee");
+  }
+  await employeeRepository.softDelete(id);
+}

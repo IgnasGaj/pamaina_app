@@ -1,12 +1,17 @@
 import { z } from "zod";
-import { EmploymentStatus, EmploymentType } from "@prisma/client";
+import { EmployeeStatus, EmploymentStatus, EmploymentType } from "@prisma/client";
 import { paginationQuerySchema } from "@/shared/utils/pagination.util";
+
+export const employeeSortBySchema = z.enum(["name", "hireDate", "createdAt"]);
+export type EmployeeSortBy = z.infer<typeof employeeSortBySchema>;
 
 export const createEmployeeSchema = z.object({
   firstName: z.string().min(1).max(100),
   lastName: z.string().min(1).max(100),
   email: z.string().email().optional(),
   phone: z.string().max(30).optional(),
+  personalCode: z.string().max(50).optional(),
+  birthDate: z.coerce.date().optional(),
   employeeCode: z.string().min(1).max(50).optional(),
   departmentId: z.string().uuid().optional(),
   positionId: z.string().uuid().optional(),
@@ -21,13 +26,18 @@ export const updateEmployeeSchema = z.object({
   lastName: z.string().min(1).max(100).optional(),
   email: z.string().email().nullable().optional(),
   phone: z.string().max(30).nullable().optional(),
+  personalCode: z.string().max(50).nullable().optional(),
+  birthDate: z.coerce.date().nullable().optional(),
   departmentId: z.string().uuid().nullable().optional(),
   positionId: z.string().uuid().nullable().optional(),
   employmentType: z.nativeEnum(EmploymentType).optional(),
   employmentStatus: z.nativeEnum(EmploymentStatus).optional(),
+  // Only ACTIVE/INACTIVE are settable here; ARCHIVED is only reachable via
+  // the dedicated archive endpoint so it always stays in lockstep with
+  // deletedAt/isActive (see employee.repository.ts#archive).
+  status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
   contractedWeeklyHours: z.coerce.number().positive().max(168).optional(),
   terminationDate: z.coerce.date().nullable().optional(),
-  isActive: z.boolean().optional(),
 });
 export type UpdateEmployeeDto = z.infer<typeof updateEmployeeSchema>;
 
@@ -40,6 +50,9 @@ export const listEmployeesQuerySchema = paginationQuerySchema.extend({
   departmentId: z.string().uuid().optional(),
   positionId: z.string().uuid().optional(),
   employmentStatus: z.nativeEnum(EmploymentStatus).optional(),
+  status: z.nativeEnum(EmployeeStatus).optional(),
+  sortBy: employeeSortBySchema.default("name"),
+  sortOrder: z.enum(["asc", "desc"]).default("asc"),
 });
 export type ListEmployeesQuery = z.infer<typeof listEmployeesQuerySchema>;
 
@@ -52,12 +65,15 @@ export const employeeResponseSchema = z.object({
   lastName: z.string(),
   email: z.string().nullable(),
   phone: z.string().nullable(),
+  personalCode: z.string().nullable(),
+  birthDate: z.string().nullable(),
   departmentId: z.string().uuid().nullable(),
   departmentName: z.string().nullable(),
   positionId: z.string().uuid().nullable(),
   positionTitle: z.string().nullable(),
   employmentType: z.nativeEnum(EmploymentType),
   employmentStatus: z.nativeEnum(EmploymentStatus),
+  status: z.nativeEnum(EmployeeStatus),
   contractedWeeklyHours: z.number(),
   hireDate: z.string(),
   terminationDate: z.string().nullable(),

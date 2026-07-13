@@ -44,11 +44,18 @@ router.patch(
   asyncHandler(async (req, res) => employeeController.update(req, res)),
 );
 
-router.delete(
-  "/:id",
+router.post(
+  "/:id/archive",
   authorize(PERMISSIONS.EMPLOYEE_DELETE),
   validate({ params: employeeIdParamsSchema }),
-  asyncHandler(async (req, res) => employeeController.remove(req, res)),
+  asyncHandler(async (req, res) => employeeController.archive(req, res)),
+);
+
+router.post(
+  "/:id/restore",
+  authorize(PERMISSIONS.EMPLOYEE_DELETE),
+  validate({ params: employeeIdParamsSchema }),
+  asyncHandler(async (req, res) => employeeController.restore(req, res)),
 );
 
 export default router;

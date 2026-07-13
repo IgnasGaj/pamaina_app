@@ -1,6 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { createEmployee, deleteEmployee, getEmployee, listEmployees, updateEmployee } from '@/api/employees.api'
+import {
+  archiveEmployee,
+  createEmployee,
+  getEmployee,
+  listEmployees,
+  restoreEmployee,
+  updateEmployee,
+} from '@/api/employees.api'
 import type { CreateEmployeePayload, ListEmployeesQuery, UpdateEmployeePayload } from '@/types/employee.types'
 
 export const employeeKeys = {
@@ -47,12 +54,24 @@ export function useUpdateEmployee(id: string) {
   })
 }
 
-export function useDeleteEmployee() {
+export function useArchiveEmployee() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (id: string) => deleteEmployee(id),
-    onSuccess: () => {
+    mutationFn: (id: string) => archiveEmployee(id),
+    onSuccess: (_data, id) => {
       void queryClient.invalidateQueries({ queryKey: employeeKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: employeeKeys.detail(id) })
+    },
+  })
+}
+
+export function useRestoreEmployee() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => restoreEmployee(id),
+    onSuccess: (_data, id) => {
+      void queryClient.invalidateQueries({ queryKey: employeeKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: employeeKeys.detail(id) })
     },
   })
 }

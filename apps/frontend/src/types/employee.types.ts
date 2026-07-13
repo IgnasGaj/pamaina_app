@@ -2,6 +2,11 @@ export type EmploymentType = 'FULL_TIME' | 'PART_TIME' | 'CONTRACTOR' | 'INTERN'
 
 export type EmploymentStatus = 'ACTIVE' | 'ON_LEAVE' | 'TERMINATED'
 
+/** Record lifecycle status — distinct from EmploymentStatus. ARCHIVED is the module's soft-delete state. */
+export type EmployeeStatus = 'ACTIVE' | 'INACTIVE' | 'ARCHIVED'
+
+export type EmployeeSortBy = 'name' | 'hireDate' | 'createdAt'
+
 export interface Employee {
   id: string
   companyId: string
@@ -11,12 +16,15 @@ export interface Employee {
   lastName: string
   email: string | null
   phone: string | null
+  personalCode: string | null
+  birthDate: string | null
   departmentId: string | null
   departmentName: string | null
   positionId: string | null
   positionTitle: string | null
   employmentType: EmploymentType
   employmentStatus: EmploymentStatus
+  status: EmployeeStatus
   contractedWeeklyHours: number
   hireDate: string
   terminationDate: string | null
@@ -29,6 +37,8 @@ export interface CreateEmployeePayload {
   lastName: string
   email?: string
   phone?: string
+  personalCode?: string
+  birthDate?: string
   employeeCode?: string
   departmentId?: string
   positionId?: string
@@ -42,13 +52,15 @@ export interface UpdateEmployeePayload {
   lastName?: string
   email?: string | null
   phone?: string | null
+  personalCode?: string | null
+  birthDate?: string | null
   departmentId?: string | null
   positionId?: string | null
   employmentType?: EmploymentType
   employmentStatus?: EmploymentStatus
+  status?: Extract<EmployeeStatus, 'ACTIVE' | 'INACTIVE'>
   contractedWeeklyHours?: number
   terminationDate?: string | null
-  isActive?: boolean
 }
 
 export interface ListEmployeesQuery {
@@ -58,4 +70,7 @@ export interface ListEmployeesQuery {
   departmentId?: string
   positionId?: string
   employmentStatus?: EmploymentStatus
+  status?: EmployeeStatus
+  sortBy?: EmployeeSortBy
+  sortOrder?: 'asc' | 'desc'
 }

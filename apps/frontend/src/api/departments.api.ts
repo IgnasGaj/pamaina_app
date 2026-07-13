@@ -1,4 +1,4 @@
-import { apiClient, unwrap } from '@/lib/api-client'
+import { apiClient, unwrap, unwrapPaginated } from '@/lib/api-client'
 import type { PaginatedResult } from '@/types/api.types'
 import type {
   CreateDepartmentPayload,
@@ -8,7 +8,7 @@ import type {
 } from '@/types/department.types'
 
 export function listDepartments(query: ListDepartmentsQuery = {}): Promise<PaginatedResult<Department>> {
-  return unwrap(apiClient.get('/departments', { params: query }))
+  return unwrapPaginated(apiClient.get('/departments', { params: query }))
 }
 
 export function getDepartment(id: string): Promise<Department> {

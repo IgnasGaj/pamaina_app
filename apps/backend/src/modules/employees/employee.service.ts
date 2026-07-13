@@ -42,24 +42,27 @@ export async function createEmployee(companyId: string, dto: CreateEmployeeDto):
     await assertPositionBelongsToCompany(dto.positionId, companyId);
   }
 
+  const baseData = {
+    companyId,
+    firstName: dto.firstName,
+    lastName: dto.lastName,
+    email: dto.email,
+    phone: dto.phone,
+    personalCode: dto.personalCode,
+    birthDate: dto.birthDate,
+    departmentId: dto.departmentId,
+    positionId: dto.positionId,
+    employmentType: dto.employmentType,
+    contractedWeeklyHours: dto.contractedWeeklyHours,
+    hireDate: dto.hireDate,
+  };
+
   if (dto.employeeCode) {
     const existing = await employeeRepository.findByCodeInCompany(dto.employeeCode, companyId);
     if (existing) {
       throw new ConflictError("An employee with this employee code already exists");
     }
-    const employee = await employeeRepository.create({
-      companyId,
-      employeeCode: dto.employeeCode,
-      firstName: dto.firstName,
-      lastName: dto.lastName,
-      email: dto.email,
-      phone: dto.phone,
-      departmentId: dto.departmentId,
-      positionId: dto.positionId,
-      employmentType: dto.employmentType,
-      contractedWeeklyHours: dto.contractedWeeklyHours,
-      hireDate: dto.hireDate,
-    });
+    const employee = await employeeRepository.create({ ...baseData, employeeCode: dto.employeeCode });
     return toEmployeeResponseDto(employee);
   }
 
@@ -68,19 +71,7 @@ export async function createEmployee(companyId: string, dto: CreateEmployeeDto):
   for (let attempt = 0; attempt < MAX_CODE_GENERATION_ATTEMPTS; attempt += 1) {
     const employeeCode = await generateEmployeeCode(companyId);
     try {
-      const employee = await employeeRepository.create({
-        companyId,
-        employeeCode,
-        firstName: dto.firstName,
-        lastName: dto.lastName,
-        email: dto.email,
-        phone: dto.phone,
-        departmentId: dto.departmentId,
-        positionId: dto.positionId,
-        employmentType: dto.employmentType,
-        contractedWeeklyHours: dto.contractedWeeklyHours,
-        hireDate: dto.hireDate,
-      });
+      const employee = await employeeRepository.create({ ...baseData, employeeCode });
       return toEmployeeResponseDto(employee);
     } catch (err) {
       const isUniqueConflict = err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002";
@@ -131,11 +122,13 @@ export async function updateEmployee(
     lastName: dto.lastName,
     email: dto.email,
     phone: dto.phone,
+    personalCode: dto.personalCode,
+    birthDate: dto.birthDate,
     employmentType: dto.employmentType,
     employmentStatus: dto.employmentStatus,
+    status: dto.status,
     contractedWeeklyHours: dto.contractedWeeklyHours,
     terminationDate: dto.terminationDate,
-    isActive: dto.isActive,
     ...(dto.departmentId !== undefined
       ? { department: dto.departmentId ? { connect: { id: dto.departmentId } } : { disconnect: true } }
       : {}),
@@ -159,6 +152,9 @@ export async function listEmployees(
       departmentId: query.departmentId,
       positionId: query.positionId,
       employmentStatus: query.employmentStatus,
+      status: query.status,
+      sortBy: query.sortBy,
+      sortOrder: query.sortOrder,
       restrictToUserId,
     },
     query,
@@ -166,10 +162,22 @@ export async function listEmployees(
   return buildPaginatedResult(items.map(toEmployeeResponseDto), query, total);
 }
 
-export async function deleteEmployee(companyId: string, id: string): Promise<void> {
+export async function archiveEmployee(companyId: string, id: string): Promise<EmployeeResponseDto> {
   const existing = await employeeRepository.findByIdInCompany(id, companyId);
   if (!existing) {
     throw new NotFoundError("Employee");
   }
-  await employeeRepository.softDelete(id);
+  await employeeRepository.archive(id);
+  const updated = await employeeRepository.findByIdInCompany(id, companyId);
+  return toEmployeeResponseDto(updated!);
+}
+
+export async function restoreEmployee(companyId: string, id: string): Promise<EmployeeResponseDto> {
+  const existing = await employeeRepository.findByIdInCompany(id, companyId);
+  if (!existing) {
+    throw new NotFoundError("Employee");
+  }
+  await employeeRepository.restore(id);
+  const updated = await employeeRepository.findByIdInCompany(id, companyId);
+  return toEmployeeResponseDto(updated!);
 }

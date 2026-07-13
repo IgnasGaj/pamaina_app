@@ -20,24 +20,44 @@ import { useDepartments } from '@/hooks/useDepartments'
 import { useCreateEmployee, useUpdateEmployee } from '@/hooks/useEmployees'
 import { usePositions } from '@/hooks/usePositions'
 import { getErrorMessage } from '@/lib/errors'
-import type { Employee, EmploymentStatus, EmploymentType } from '@/types/employee.types'
+import type { Employee, EmployeeStatus, EmploymentStatus, EmploymentType } from '@/types/employee.types'
 
 const NONE_VALUE = '__none__'
 
 const EMPLOYMENT_TYPES: EmploymentType[] = ['FULL_TIME', 'PART_TIME', 'CONTRACTOR', 'INTERN']
 const EMPLOYMENT_STATUSES: EmploymentStatus[] = ['ACTIVE', 'ON_LEAVE', 'TERMINATED']
+const EDITABLE_STATUSES: Extract<EmployeeStatus, 'ACTIVE' | 'INACTIVE'>[] = ['ACTIVE', 'INACTIVE']
+
+function isValidDateString(value: string): boolean {
+  return !Number.isNaN(new Date(value).getTime())
+}
 
 const employeeSchema = z.object({
   firstName: z.string().min(1, 'First name is required').max(100),
   lastName: z.string().min(1, 'Last name is required').max(100),
   email: z.string().email('Enter a valid email').optional().or(z.literal('')),
-  phone: z.string().max(30).optional().or(z.literal('')),
+  phone: z
+    .string()
+    .max(30)
+    .regex(/^[0-9+()\-\s]*$/, 'Enter a valid phone number')
+    .optional()
+    .or(z.literal('')),
+  personalCode: z.string().max(50).optional().or(z.literal('')),
+  birthDate: z
+    .string()
+    .optional()
+    .or(z.literal(''))
+    .refine((value) => !value || isValidDateString(value), 'Enter a valid date'),
   departmentId: z.string(),
   positionId: z.string(),
   employmentType: z.enum(['FULL_TIME', 'PART_TIME', 'CONTRACTOR', 'INTERN']),
   employmentStatus: z.enum(['ACTIVE', 'ON_LEAVE', 'TERMINATED']),
+  status: z.enum(['ACTIVE', 'INACTIVE']),
   contractedWeeklyHours: z.coerce.number().positive('Must be positive').max(168),
-  hireDate: z.string().min(1, 'Hire date is required'),
+  hireDate: z
+    .string()
+    .min(1, 'Hire date is required')
+    .refine(isValidDateString, 'Enter a valid date'),
 })
 
 type EmployeeFormValues = z.infer<typeof employeeSchema>
@@ -70,10 +90,13 @@ export function EmployeeFormDialog({
       lastName: '',
       email: '',
       phone: '',
+      personalCode: '',
+      birthDate: '',
       departmentId: NONE_VALUE,
       positionId: NONE_VALUE,
       employmentType: 'FULL_TIME',
       employmentStatus: 'ACTIVE',
+      status: 'ACTIVE',
       contractedWeeklyHours: 40,
       hireDate: new Date().toISOString().slice(0, 10),
     },
@@ -86,10 +109,13 @@ export function EmployeeFormDialog({
         lastName: employee?.lastName ?? '',
         email: employee?.email ?? '',
         phone: employee?.phone ?? '',
+        personalCode: employee?.personalCode ?? '',
+        birthDate: employee?.birthDate?.slice(0, 10) ?? '',
         departmentId: employee?.departmentId ?? NONE_VALUE,
         positionId: employee?.positionId ?? NONE_VALUE,
         employmentType: employee?.employmentType ?? 'FULL_TIME',
         employmentStatus: employee?.employmentStatus ?? 'ACTIVE',
+        status: employee?.status === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE',
         contractedWeeklyHours: employee?.contractedWeeklyHours ?? 40,
         hireDate: employee?.hireDate.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
       })
@@ -107,10 +133,13 @@ export function EmployeeFormDialog({
           lastName: values.lastName,
           email: values.email || null,
           phone: values.phone || null,
+          personalCode: values.personalCode || null,
+          birthDate: values.birthDate || null,
           departmentId: departmentId ?? null,
           positionId: positionId ?? null,
           employmentType: values.employmentType,
           employmentStatus: values.employmentStatus,
+          status: values.status,
           contractedWeeklyHours: values.contractedWeeklyHours,
         })
         toast.success('Employee updated')
@@ -120,6 +149,8 @@ export function EmployeeFormDialog({
           lastName: values.lastName,
           email: values.email || undefined,
           phone: values.phone || undefined,
+          personalCode: values.personalCode || undefined,
+          birthDate: values.birthDate || undefined,
           departmentId,
           positionId,
           employmentType: values.employmentType,
@@ -168,6 +199,20 @@ export function EmployeeFormDialog({
             <div className="space-y-2">
               <Label htmlFor="phone">Phone</Label>
               <Input id="phone" {...register('phone')} />
+              {errors.phone && <p className="text-sm text-destructive">{errors.phone.message}</p>}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="personalCode">Personal code</Label>
+              <Input id="personalCode" {...register('personalCode')} />
+              {errors.personalCode && <p className="text-sm text-destructive">{errors.personalCode.message}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="birthDate">Birth date</Label>
+              <Input id="birthDate" type="date" {...register('birthDate')} />
+              {errors.birthDate && <p className="text-sm text-destructive">{errors.birthDate.message}</p>}
             </div>
           </div>
 
@@ -243,7 +288,7 @@ export function EmployeeFormDialog({
 
             {isEditing && (
               <div className="space-y-2">
-                <Label>Status</Label>
+                <Label>Employment status</Label>
                 <Controller
                   control={control}
                   name="employmentStatus"
@@ -277,12 +322,38 @@ export function EmployeeFormDialog({
                 <p className="text-sm text-destructive">{errors.contractedWeeklyHours.message}</p>
               )}
             </div>
+          </div>
 
+          <div className="grid grid-cols-2 gap-3">
             {!isEditing && (
               <div className="space-y-2">
                 <Label htmlFor="hireDate">Hire date</Label>
                 <Input id="hireDate" type="date" {...register('hireDate')} />
                 {errors.hireDate && <p className="text-sm text-destructive">{errors.hireDate.message}</p>}
+              </div>
+            )}
+
+            {isEditing && (
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Controller
+                  control={control}
+                  name="status"
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {EDITABLE_STATUSES.map((status) => (
+                          <SelectItem key={status} value={status}>
+                            {status.charAt(0) + status.slice(1).toLowerCase()}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
               </div>
             )}
           </div>

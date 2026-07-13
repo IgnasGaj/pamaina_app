@@ -1,9 +1,9 @@
-import { apiClient, unwrap } from '@/lib/api-client'
+import { apiClient, unwrap, unwrapPaginated } from '@/lib/api-client'
 import type { PaginatedResult } from '@/types/api.types'
 import type { CompanyUser, CreateUserPayload, ListUsersQuery, UpdateUserPayload } from '@/types/user.types'
 
 export function listUsers(query: ListUsersQuery = {}): Promise<PaginatedResult<CompanyUser>> {
-  return unwrap(apiClient.get('/users', { params: query }))
+  return unwrapPaginated(apiClient.get('/users', { params: query }))
 }
 
 export function getUser(id: string): Promise<CompanyUser> {

@@ -3,7 +3,7 @@ import { toast } from 'sonner'
 
 import { API_BASE_URL } from '@/lib/env'
 import { useAuthStore } from '@/stores/auth.store'
-import { ApiError, type ApiErrorBody, type ApiSuccessBody } from '@/types/api.types'
+import { ApiError, type ApiErrorBody, type ApiSuccessBody, type PaginatedResult, type PaginationMeta } from '@/types/api.types'
 import type { AuthResponse } from '@/types/auth.types'
 
 interface RetryableRequestConfig extends InternalAxiosRequestConfig {
@@ -86,4 +86,21 @@ apiClient.interceptors.response.use(
 export async function unwrap<T>(promise: Promise<{ data: ApiSuccessBody<T> }>): Promise<T> {
   const response = await promise
   return response.data.data
+}
+
+/**
+ * List endpoints send their items as `data` and pagination info nested under
+ * `meta.pagination` (see shared/utils/api-response.util.ts on the backend).
+ * This reshapes that envelope into the `{ items, meta }` shape list hooks
+ * expect, instead of silently discarding pagination like a plain unwrap().
+ */
+export async function unwrapPaginated<T>(
+  promise: Promise<{ data: ApiSuccessBody<T[]> }>,
+): Promise<PaginatedResult<T>> {
+  const response = await promise
+  const pagination = response.data.meta?.pagination as PaginationMeta | undefined
+  if (!pagination) {
+    throw new Error('Expected a paginated response but no pagination metadata was returned')
+  }
+  return { items: response.data.data, meta: pagination }
 }

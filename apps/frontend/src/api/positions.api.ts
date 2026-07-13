@@ -1,4 +1,4 @@
-import { apiClient, unwrap } from '@/lib/api-client'
+import { apiClient, unwrap, unwrapPaginated } from '@/lib/api-client'
 import type { PaginatedResult } from '@/types/api.types'
 import type {
   CreatePositionPayload,
@@ -8,7 +8,7 @@ import type {
 } from '@/types/position.types'
 
 export function listPositions(query: ListPositionsQuery = {}): Promise<PaginatedResult<Position>> {
-  return unwrap(apiClient.get('/positions', { params: query }))
+  return unwrapPaginated(apiClient.get('/positions', { params: query }))
 }
 
 export function getPosition(id: string): Promise<Position> {

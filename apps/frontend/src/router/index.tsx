@@ -11,6 +11,7 @@ import { DashboardPage } from '@/pages/DashboardPage'
 import { DepartmentsPage } from '@/pages/departments/DepartmentsPage'
 import { PositionsPage } from '@/pages/positions/PositionsPage'
 import { EmployeesPage } from '@/pages/employees/EmployeesPage'
+import { EmployeeDetailsPage } from '@/pages/employees/EmployeeDetailsPage'
 import { UsersPage } from '@/pages/users/UsersPage'
 import { CompanySettingsPage } from '@/pages/settings/CompanySettingsPage'
 import { ForbiddenPage } from '@/pages/errors/ForbiddenPage'
@@ -34,7 +35,10 @@ export const router = createBrowserRouter([
               { index: true, element: <DashboardPage /> },
               {
                 element: <RequirePermission anyOf={[PERMISSIONS.EMPLOYEE_READ]} />,
-                children: [{ path: 'employees', element: <EmployeesPage /> }],
+                children: [
+                  { path: 'employees', element: <EmployeesPage /> },
+                  { path: 'employees/:id', element: <EmployeeDetailsPage /> },
+                ],
               },
               {
                 element: <RequirePermission anyOf={[PERMISSIONS.DEPARTMENT_READ]} />,

@@ -48,6 +48,7 @@ export class AuthRepository {
       userId: string;
       tokenHash: string;
       expiresAt: Date;
+      rememberMe: boolean;
       createdByIp?: string | null;
       userAgent?: string | null;
     },

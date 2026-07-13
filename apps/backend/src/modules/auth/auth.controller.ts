@@ -9,13 +9,19 @@ import { getTokenExpiry } from "@/shared/utils/jwt.util";
 const REFRESH_COOKIE_NAME = "pamaina_refresh_token";
 const REFRESH_COOKIE_PATH = "/api/v1/auth";
 
-function setRefreshCookie(res: Response, refreshToken: string): void {
+/**
+ * A "remember me" session gets a persistent cookie (expires matching the
+ * refresh token's own lifetime); otherwise the cookie is left without an
+ * expiry so the browser drops it as soon as it's closed, even though the
+ * underlying refresh token stays valid server-side for its full lifetime.
+ */
+function setRefreshCookie(res: Response, refreshToken: string, rememberMe: boolean): void {
   res.cookie(REFRESH_COOKIE_NAME, refreshToken, {
     httpOnly: true,
     secure: isProduction,
     sameSite: "lax",
     path: REFRESH_COOKIE_PATH,
-    expires: getTokenExpiry(refreshToken),
+    ...(rememberMe ? { expires: getTokenExpiry(refreshToken) } : {}),
   });
 }
 
@@ -36,7 +42,7 @@ export async function registerCompany(req: Request, res: Response): Promise<void
     ip: req.ip,
     userAgent: req.headers["user-agent"],
   });
-  setRefreshCookie(res, result.refreshToken);
+  setRefreshCookie(res, result.refreshToken, result.rememberMe);
   sendSuccess(res, { user: result.user, tokens: result.tokens }, 201);
 }
 
@@ -45,7 +51,7 @@ export async function login(req: Request, res: Response): Promise<void> {
     ip: req.ip,
     userAgent: req.headers["user-agent"],
   });
-  setRefreshCookie(res, result.refreshToken);
+  setRefreshCookie(res, result.refreshToken, result.rememberMe);
   sendSuccess(res, { user: result.user, tokens: result.tokens });
 }
 
@@ -55,7 +61,7 @@ export async function refresh(req: Request, res: Response): Promise<void> {
     ip: req.ip,
     userAgent: req.headers["user-agent"],
   });
-  setRefreshCookie(res, result.refreshToken);
+  setRefreshCookie(res, result.refreshToken, result.rememberMe);
   sendSuccess(res, { user: result.user, tokens: result.tokens });
 }
 

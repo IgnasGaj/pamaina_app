@@ -1,4 +1,5 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios'
+import { toast } from 'sonner'
 
 import { API_BASE_URL } from '@/lib/env'
 import { useAuthStore } from '@/stores/auth.store'
@@ -58,8 +59,14 @@ apiClient.interceptors.response.use(
         useAuthStore.getState().setSession(session)
         return apiClient(originalRequest)
       } catch {
+        // Only reached once a real, previously-authenticated request's own
+        // silent refresh has failed — never on the initial session check on
+        // app load (that goes through /auth/refresh directly, which is
+        // excluded above via isAuthEndpoint), so this always means an
+        // active session just expired, not "never logged in".
         useAuthStore.getState().clearSession()
-        return Promise.reject(new ApiError('UNAUTHORIZED', 'Your session has expired. Please sign in again.', 401))
+        toast.error('Your session has expired. Please login again.')
+        return Promise.reject(new ApiError('UNAUTHORIZED', 'Your session has expired. Please login again.', 401))
       }
     }
 

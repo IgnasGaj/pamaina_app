@@ -201,6 +201,9 @@ model RefreshToken {
   /// SHA-256 hash of the refresh token — the raw token is never persisted.
   tokenHash    String    @unique @map("token_hash")
   expiresAt    DateTime  @map("expires_at")
+  /// Carried forward across rotations so a "Remember me" choice made at
+  /// login still applies to the cookie set by later silent refreshes.
+  rememberMe   Boolean   @default(false) @map("remember_me")
   revokedAt    DateTime? @map("revoked_at")
   replacedBy   String?   @map("replaced_by")
   createdByIp  String?   @map("created_by_ip")

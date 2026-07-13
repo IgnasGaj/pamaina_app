@@ -5,6 +5,7 @@ import { authorize } from "@/shared/middlewares/authorize.middleware";
 import { asyncHandler } from "@/shared/middlewares/async-handler";
 import { validate } from "@/shared/middlewares/validate.middleware";
 import { companyIdParamsSchema, updateCompanySchema } from "@/modules/companies/company.dto";
+import { updateCompanySettingsSchema } from "@/modules/companies/company-settings.dto";
 import { paginationQuerySchema } from "@/shared/utils/pagination.util";
 import { PERMISSIONS } from "@/shared/constants/permissions";
 
@@ -36,6 +37,24 @@ router.delete(
   authorize(PERMISSIONS.COMPANY_MANAGE),
   validate({ params: companyIdParamsSchema }),
   asyncHandler(async (req, res) => companyController.remove(req, res)),
+);
+
+router.get(
+  "/:id/settings",
+  validate({ params: companyIdParamsSchema }),
+  asyncHandler(async (req, res) => companyController.getSettings(req, res)),
+);
+
+router.patch(
+  "/:id/settings",
+  validate({ params: companyIdParamsSchema, body: updateCompanySettingsSchema }),
+  asyncHandler(async (req, res) => companyController.updateSettings(req, res)),
+);
+
+router.post(
+  "/:id/onboarding/complete",
+  validate({ params: companyIdParamsSchema }),
+  asyncHandler(async (req, res) => companyController.completeOnboardingHandler(req, res)),
 );
 
 export default router;

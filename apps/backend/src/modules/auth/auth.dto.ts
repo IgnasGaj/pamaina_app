@@ -14,7 +14,13 @@ export const registerCompanySchema = z.object({
     firstName: z.string().min(1).max(100),
     lastName: z.string().min(1).max(100),
     email: z.string().email(),
-    password: z.string().min(8).max(128),
+    password: z
+      .string()
+      .min(8, "Password must be at least 8 characters")
+      .max(128)
+      .regex(/[a-z]/, "Password must contain a lowercase letter")
+      .regex(/[A-Z]/, "Password must contain an uppercase letter")
+      .regex(/[0-9]/, "Password must contain a number"),
   }),
 });
 export type RegisterCompanyDto = z.infer<typeof registerCompanySchema>;
@@ -41,6 +47,9 @@ export const authUserResponseSchema = z.object({
   roleKey: z.string().nullable(),
   roleName: z.string(),
   permissions: z.array(z.string()),
+  // Null while the owning company is still onboarding, or for
+  // company-less accounts (e.g. platform Super Admins).
+  onboardingCompletedAt: z.string().nullable(),
 });
 export type AuthUserResponseDto = z.infer<typeof authUserResponseSchema>;
 

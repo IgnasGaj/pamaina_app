@@ -1,15 +1,37 @@
-import { Building2, Briefcase, Users } from 'lucide-react'
+import { Briefcase, Building2, Settings, UserPlus, Users } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { useCompany, useCompanySettings } from '@/hooks/useCompany'
 import { useDepartments } from '@/hooks/useDepartments'
 import { useEmployees } from '@/hooks/useEmployees'
 import { usePositions } from '@/hooks/usePositions'
+import { BUSINESS_TYPE_LABELS } from '@/lib/company-options'
 import { useAuthStore } from '@/stores/auth.store'
 import { PERMISSIONS } from '@/types/auth.types'
+
+function QuickAction({
+  to,
+  label,
+  icon: Icon,
+}: {
+  to: string
+  label: string
+  icon: typeof Users
+}) {
+  return (
+    <Button asChild variant="outline" className="h-auto justify-start gap-3 py-3">
+      <Link to={to}>
+        <Icon className="size-4 text-primary" />
+        {label}
+      </Link>
+    </Button>
+  )
+}
 
 function StatCard({
   label,
@@ -44,13 +66,45 @@ export function DashboardPage() {
   const canReadEmployees = hasAnyPermission([PERMISSIONS.EMPLOYEE_READ])
   const canReadDepartments = hasAnyPermission([PERMISSIONS.DEPARTMENT_READ])
   const canReadPositions = hasAnyPermission([PERMISSIONS.POSITION_READ])
+  const canCreateEmployees = hasAnyPermission([PERMISSIONS.EMPLOYEE_CREATE])
+  const canCreateDepartments = hasAnyPermission([PERMISSIONS.DEPARTMENT_CREATE])
 
+  const companyQuery = useCompany(user?.companyId ?? undefined)
+  const companySettingsQuery = useCompanySettings(user?.companyId ?? undefined)
   const employeesQuery = useEmployees({ pageSize: 5 })
   const departmentsQuery = useDepartments({ pageSize: 1 })
   const positionsQuery = usePositions({ pageSize: 1 })
 
+  const businessType = companySettingsQuery.data?.businessType
+
   return (
     <div>
+      <Card className="mb-6">
+        <CardContent className="flex flex-col gap-4 pt-6 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight">Welcome to Pamaina!</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {companyQuery.data?.name ?? '—'}
+              {businessType && (
+                <>
+                  {' · '}
+                  <Badge variant="secondary" className="align-middle">
+                    {BUSINESS_TYPE_LABELS[businessType]}
+                  </Badge>
+                </>
+              )}
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            {canCreateEmployees && <QuickAction to="/employees" label="Add employee" icon={UserPlus} />}
+            {canCreateDepartments && <QuickAction to="/departments" label="Create department" icon={Building2} />}
+            {user?.roleKey === 'COMPANY_OWNER' && (
+              <QuickAction to="/settings/company" label="Settings" icon={Settings} />
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       <PageHeader
         title={`Welcome back, ${user?.firstName ?? ''}`}
         description="Here's a snapshot of your workforce."

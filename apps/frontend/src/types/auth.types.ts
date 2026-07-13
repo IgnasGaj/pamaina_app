@@ -39,6 +39,7 @@ export interface AuthUser {
   roleKey: SystemRoleKey | null
   roleName: string
   permissions: PermissionKey[]
+  onboardingCompletedAt: string | null
 }
 
 export interface AuthTokens {

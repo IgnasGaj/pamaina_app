@@ -13,6 +13,10 @@ export type CreateCompanyDto = z.infer<typeof createCompanySchema>;
 
 export const updateCompanySchema = createCompanySchema.partial().extend({
   isActive: z.boolean().optional(),
+  // Set during onboarding step 1; free-form to accommodate any ISO-3166
+  // country code / IANA timezone without a lookup-table dependency.
+  country: z.string().min(2).max(60).optional(),
+  timezone: z.string().min(1).max(60).optional(),
 });
 export type UpdateCompanyDto = z.infer<typeof updateCompanySchema>;
 

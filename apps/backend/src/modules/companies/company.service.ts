@@ -3,7 +3,7 @@ import { prisma } from "@/config/prisma";
 import { companyRepository } from "@/modules/companies/company.repository";
 import { toCompanyResponseDto } from "@/modules/companies/company.mapper";
 import { CompanyResponseDto, CreateCompanyDto, UpdateCompanyDto } from "@/modules/companies/company.dto";
-import { NotFoundError } from "@/shared/errors";
+import { ConflictError, NotFoundError } from "@/shared/errors";
 import { slugify } from "@/shared/utils/slug.util";
 import { PaginatedResult, PaginationQuery } from "@/shared/types/pagination.types";
 import { buildPaginatedResult } from "@/shared/utils/pagination.util";
@@ -24,6 +24,13 @@ async function generateUniqueSlug(name: string, client: Client): Promise<string>
 }
 
 export async function createCompany(dto: CreateCompanyDto, client: Client = prisma): Promise<CompanyResponseDto> {
+  if (dto.legalCode) {
+    const existing = await companyRepository.findByLegalCode(dto.legalCode, client);
+    if (existing) {
+      throw new ConflictError("A company with this registration code is already registered");
+    }
+  }
+
   const slug = await generateUniqueSlug(dto.name, client);
   const company = await companyRepository.create(
     {

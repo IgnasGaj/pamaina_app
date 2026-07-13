@@ -15,11 +15,17 @@ import { getErrorMessage } from '@/lib/errors'
 const registerSchema = z
   .object({
     companyName: z.string().min(2, 'Company name is too short').max(200),
-    companyEmail: z.string().email('Enter a valid company email'),
+    companyCode: z.string().max(50).optional().or(z.literal('')),
     firstName: z.string().min(1, 'First name is required').max(100),
     lastName: z.string().min(1, 'Last name is required').max(100),
     email: z.string().email('Enter a valid email address'),
-    password: z.string().min(8, 'Password must be at least 8 characters').max(128),
+    password: z
+      .string()
+      .min(8, 'Password must be at least 8 characters')
+      .max(128)
+      .regex(/[a-z]/, 'Add a lowercase letter')
+      .regex(/[A-Z]/, 'Add an uppercase letter')
+      .regex(/[0-9]/, 'Add a number'),
     confirmPassword: z.string().min(1, 'Please confirm your password'),
   })
   .refine((data) => data.password === data.confirmPassword, {
@@ -41,7 +47,7 @@ export function RegisterCompanyPage() {
     resolver: zodResolver(registerSchema),
     defaultValues: {
       companyName: '',
-      companyEmail: '',
+      companyCode: '',
       firstName: '',
       lastName: '',
       email: '',
@@ -53,7 +59,9 @@ export function RegisterCompanyPage() {
   async function onSubmit(values: RegisterFormValues) {
     try {
       await registerCompany.mutateAsync({
-        company: { name: values.companyName, email: values.companyEmail },
+        // The signup form only collects one email; it doubles as the
+        // company's contact address and can be changed later in settings.
+        company: { name: values.companyName, email: values.email, legalCode: values.companyCode || undefined },
         owner: {
           firstName: values.firstName,
           lastName: values.lastName,
@@ -61,7 +69,7 @@ export function RegisterCompanyPage() {
           password: values.password,
         },
       })
-      void navigate('/', { replace: true })
+      void navigate('/onboarding', { replace: true })
     } catch (error) {
       toast.error(getErrorMessage(error))
     }
@@ -79,15 +87,17 @@ export function RegisterCompanyPage() {
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={(e) => void handleSubmit(onSubmit)(e)}>
-            <div className="space-y-2">
-              <Label htmlFor="companyName">Company name</Label>
-              <Input id="companyName" {...register('companyName')} />
-              {errors.companyName && <p className="text-sm text-destructive">{errors.companyName.message}</p>}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="companyEmail">Company email</Label>
-              <Input id="companyEmail" type="email" {...register('companyEmail')} />
-              {errors.companyEmail && <p className="text-sm text-destructive">{errors.companyEmail.message}</p>}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="companyName">Company name</Label>
+                <Input id="companyName" {...register('companyName')} />
+                {errors.companyName && <p className="text-sm text-destructive">{errors.companyName.message}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="companyCode">Company code (optional)</Label>
+                <Input id="companyCode" {...register('companyCode')} />
+                {errors.companyCode && <p className="text-sm text-destructive">{errors.companyCode.message}</p>}
+              </div>
             </div>
 
             <Separator />
@@ -112,7 +122,13 @@ export function RegisterCompanyPage() {
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <Input id="password" type="password" autoComplete="new-password" {...register('password')} />
-              {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
+              {errors.password ? (
+                <p className="text-sm text-destructive">{errors.password.message}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  At least 8 characters, with an uppercase letter, a lowercase letter, and a number.
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">Confirm password</Label>

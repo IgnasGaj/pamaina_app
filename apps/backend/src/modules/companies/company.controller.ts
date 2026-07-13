@@ -5,7 +5,13 @@ import {
   listCompanies,
   updateCompany,
 } from "@/modules/companies/company.service";
+import {
+  completeOnboarding,
+  getOrCreateCompanySettings,
+  updateCompanySettings,
+} from "@/modules/companies/company-settings.service";
 import { UpdateCompanyDto } from "@/modules/companies/company.dto";
+import { UpdateCompanySettingsDto } from "@/modules/companies/company-settings.dto";
 import { sendSuccess } from "@/shared/utils/api-response.util";
 import { ForbiddenError } from "@/shared/errors";
 import { PaginationQuery } from "@/shared/types/pagination.types";
@@ -42,4 +48,25 @@ export async function remove(req: Request, res: Response): Promise<void> {
   const { id } = req.params as { id: string };
   await deactivateCompany(id);
   sendSuccess(res, { id }, 200);
+}
+
+export async function getSettings(req: Request, res: Response): Promise<void> {
+  const { id } = req.params as { id: string };
+  assertCanAccessCompany(req, id);
+  const settings = await getOrCreateCompanySettings(id);
+  sendSuccess(res, settings);
+}
+
+export async function updateSettings(req: Request, res: Response): Promise<void> {
+  const { id } = req.params as { id: string };
+  assertCanAccessCompany(req, id);
+  const settings = await updateCompanySettings(id, req.body as UpdateCompanySettingsDto);
+  sendSuccess(res, settings);
+}
+
+export async function completeOnboardingHandler(req: Request, res: Response): Promise<void> {
+  const { id } = req.params as { id: string };
+  assertCanAccessCompany(req, id);
+  const settings = await completeOnboarding(id);
+  sendSuccess(res, settings);
 }

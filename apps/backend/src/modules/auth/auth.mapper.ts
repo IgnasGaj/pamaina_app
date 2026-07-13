@@ -13,5 +13,6 @@ export function toAuthUserResponseDto(user: UserWithRole): AuthUserResponseDto {
     roleKey: asSystemRoleKey(user.role.key),
     roleName: user.role.name,
     permissions: user.role.rolePermissions.map((rp) => rp.permission.key),
+    onboardingCompletedAt: user.company?.settings?.onboardingCompletedAt?.toISOString() ?? null,
   };
 }

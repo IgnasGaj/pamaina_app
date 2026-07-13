@@ -26,7 +26,7 @@ model Company {
   /// URL/slug-safe unique identifier, e.g. used for tenant-aware routing.
   slug      String   @unique
   /// Lithuanian company registration code (Juridinio asmens kodas).
-  legalCode String?  @map("legal_code")
+  legalCode String?  @unique @map("legal_code")
   /// Lithuanian VAT code (PVM mokėtojo kodas).
   vatCode   String?  @map("vat_code")
   email     String
@@ -45,9 +45,66 @@ model Company {
   departments Department[]
   positions   Position[]
   employees   Employee[]
+  settings    CompanySettings?
 
   @@index([isActive])
   @@map("companies")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Company onboarding / settings
+// ─────────────────────────────────────────────────────────────────────────
+
+/// Industry the company operates in, selected during onboarding. Purely
+/// informational at this stage — does not yet drive any scheduling logic.
+enum BusinessType {
+  FACTORY
+  RESTAURANT
+  RETAIL
+  WAREHOUSE
+  LOGISTICS
+  OFFICE
+  OTHER
+}
+
+/// How the company organizes its working week. Stored as a company-level
+/// default; per-employee overrides are out of scope until scheduling ships.
+enum WorkWeekType {
+  FIVE_DAY
+  SIX_DAY
+  /// "Suminė darbo laiko apskaita" — aggregated/summarized working time
+  /// accounting, common for shift-based Lithuanian workplaces.
+  SUMMARIZED
+}
+
+/// Which vacation accrual model the company uses. Only the selection is
+/// stored for now — accrual calculations are a future prompt.
+enum VacationPolicyType {
+  ANNUAL_ALLOCATION
+  MONTHLY_ACCRUAL
+}
+
+model CompanySettings {
+  id        String @id @default(uuid())
+  companyId String @unique @map("company_id")
+
+  logoUrl           String? @map("logo_url")
+  preferredLanguage String  @default("lt") @map("preferred_language")
+
+  businessType   BusinessType?       @map("business_type")
+  workWeekType   WorkWeekType?       @map("work_week_type")
+  vacationPolicy VacationPolicyType? @map("vacation_policy")
+
+  /// Set once the onboarding wizard is completed; null while a company is
+  /// still onboarding. Used by the frontend to gate access to the app.
+  onboardingCompletedAt DateTime? @map("onboarding_completed_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("company_settings")
 }
 
 // ─────────────────────────────────────────────────────────────────────────

@@ -4,7 +4,10 @@ import { prisma } from "@/config/prisma";
 type Client = PrismaClient | Prisma.TransactionClient;
 
 const userWithRole = Prisma.validator<Prisma.UserDefaultArgs>()({
-  include: { role: { include: { rolePermissions: { include: { permission: true } } } } },
+  include: {
+    role: { include: { rolePermissions: { include: { permission: true } } } },
+    company: { include: { settings: true } },
+  },
 });
 
 export type UserWithRole = Prisma.UserGetPayload<typeof userWithRole>;

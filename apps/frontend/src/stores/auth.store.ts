@@ -11,6 +11,7 @@ interface AuthState {
   setSession: (session: AuthResponse) => void
   clearSession: () => void
   markUnauthenticated: () => void
+  updateUser: (patch: Partial<AuthUser>) => void
   hasPermission: (permission: PermissionKey) => boolean
   hasAnyPermission: (permissions: PermissionKey[]) => boolean
 }
@@ -35,6 +36,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }),
 
   markUnauthenticated: () => set({ status: 'unauthenticated' }),
+
+  updateUser: (patch) =>
+    set((state) => (state.user ? { user: { ...state.user, ...patch } } : {})),
 
   hasPermission: (permission) => get().user?.permissions.includes(permission) ?? false,
 

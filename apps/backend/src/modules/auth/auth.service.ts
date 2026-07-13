@@ -9,7 +9,10 @@ import {
   RegisterCompanyDto,
 } from "@/modules/auth/auth.dto";
 import { createCompany } from "@/modules/companies/company.service";
+import { companySettingsRepository } from "@/modules/companies/company-settings.repository";
 import { ensureSystemRolesForCompany } from "@/modules/roles/role.service";
+import { departmentRepository } from "@/modules/departments/department.repository";
+import { positionRepository } from "@/modules/positions/position.repository";
 import { hashPassword, verifyPassword } from "@/shared/utils/password.util";
 import {
   getTokenExpiry,
@@ -73,6 +76,20 @@ export async function registerCompany(dto: RegisterCompanyDto, ctx: RequestConte
   const user = await prisma.$transaction(async (tx) => {
     const company = await createCompany(dto.company, tx);
     const roles = await ensureSystemRolesForCompany(company.id, tx);
+
+    // Default org structure + settings row so a brand new company has a
+    // working baseline (an employee can be added immediately) and a stable
+    // 1:1 CompanySettings record for the onboarding wizard to update.
+    const generalDepartment = await departmentRepository.create(
+      { companyId: company.id, name: "General" },
+      tx,
+    );
+    await positionRepository.create(
+      { companyId: company.id, title: "Employee", departmentId: generalDepartment.id },
+      tx,
+    );
+    await companySettingsRepository.create({ companyId: company.id }, tx);
+
     const createdUser = await authRepository.createUser(
       {
         companyId: company.id,

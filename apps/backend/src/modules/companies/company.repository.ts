@@ -18,6 +18,10 @@ export class CompanyRepository {
     return client.company.findUnique({ where: { slug } });
   }
 
+  async findByLegalCode(legalCode: string, client: Client = prisma): Promise<Company | null> {
+    return client.company.findUnique({ where: { legalCode } });
+  }
+
   async update(id: string, data: Prisma.CompanyUpdateInput, client: Client = prisma): Promise<Company> {
     return client.company.update({ where: { id }, data });
   }

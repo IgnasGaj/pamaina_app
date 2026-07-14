@@ -11,6 +11,8 @@ import { DashboardPage } from '@/pages/DashboardPage'
 import { OrganizationPage } from '@/pages/organization/OrganizationPage'
 import { EmployeesPage } from '@/pages/employees/EmployeesPage'
 import { EmployeeDetailsPage } from '@/pages/employees/EmployeeDetailsPage'
+import { ContractsPage } from '@/pages/contracts/ContractsPage'
+import { ContractDetailsPage } from '@/pages/contracts/ContractDetailsPage'
 import { UsersPage } from '@/pages/users/UsersPage'
 import { CompanySettingsPage } from '@/pages/settings/CompanySettingsPage'
 import { ForbiddenPage } from '@/pages/errors/ForbiddenPage'
@@ -37,6 +39,13 @@ export const router = createBrowserRouter([
                 children: [
                   { path: 'employees', element: <EmployeesPage /> },
                   { path: 'employees/:id', element: <EmployeeDetailsPage /> },
+                ],
+              },
+              {
+                element: <RequirePermission anyOf={[PERMISSIONS.CONTRACT_READ]} />,
+                children: [
+                  { path: 'contracts', element: <ContractsPage /> },
+                  { path: 'contracts/:id', element: <ContractDetailsPage /> },
                 ],
               },
               {

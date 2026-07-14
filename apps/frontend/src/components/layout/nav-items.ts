@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import { Building2, LayoutDashboard, Settings, UserCog, Users } from 'lucide-react'
+import { Building2, FileText, LayoutDashboard, Settings, UserCog, Users } from 'lucide-react'
 
 import { PERMISSIONS, type PermissionKey, type SystemRoleKey } from '@/types/auth.types'
 
@@ -15,6 +15,7 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/employees', label: 'Employees', icon: Users, permission: PERMISSIONS.EMPLOYEE_READ },
+  { to: '/contracts', label: 'Contracts', icon: FileText, permission: PERMISSIONS.CONTRACT_READ },
   {
     to: '/organization',
     label: 'Organization',

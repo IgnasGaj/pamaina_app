@@ -1,4 +1,4 @@
-import { ArrowLeft, Loader2 } from 'lucide-react'
+import { ArrowLeft, Loader2, Plus } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -9,11 +9,17 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useArchiveEmployee, useEmployee, useRestoreEmployee } from '@/hooks/useEmployees'
+import { useEmployeeContracts } from '@/hooks/useContracts'
 import { getErrorMessage } from '@/lib/errors'
+import { CONTRACT_STATUS_BADGE_VARIANT, CONTRACT_STATUS_LABELS, CONTRACT_TYPE_LABELS, WORK_WEEK_LABELS } from '@/lib/contract-options'
 import { useAuthStore } from '@/stores/auth.store'
 import { PERMISSIONS } from '@/types/auth.types'
 import type { EmployeeStatus } from '@/types/employee.types'
+import type { EmploymentContract } from '@/types/contract.types'
 import { EmployeeFormDialog } from '@/pages/employees/EmployeeFormDialog'
+import { ContractFormDialog } from '@/pages/contracts/ContractFormDialog'
+import { EndContractDialog } from '@/pages/contracts/EndContractDialog'
+import { ContractHistoryTimeline } from '@/pages/contracts/ContractHistoryTimeline'
 
 const STATUS_BADGE_VARIANT: Record<EmployeeStatus, 'success' | 'warning' | 'secondary'> = {
   ACTIVE: 'success',
@@ -41,13 +47,19 @@ export function EmployeeDetailsPage() {
   const hasAnyPermission = useAuthStore((state) => state.hasAnyPermission)
   const canUpdate = hasAnyPermission([PERMISSIONS.EMPLOYEE_UPDATE])
   const canDelete = hasAnyPermission([PERMISSIONS.EMPLOYEE_DELETE])
+  const canCreateContract = hasAnyPermission([PERMISSIONS.CONTRACT_CREATE])
+  const canUpdateContract = hasAnyPermission([PERMISSIONS.CONTRACT_UPDATE])
 
   const [formOpen, setFormOpen] = useState(false)
   const [confirmingArchive, setConfirmingArchive] = useState(false)
+  const [contractFormOpen, setContractFormOpen] = useState(false)
+  const [editingContract, setEditingContract] = useState<EmploymentContract | undefined>(undefined)
+  const [endingContract, setEndingContract] = useState<EmploymentContract | undefined>(undefined)
 
   const employeeQuery = useEmployee(id)
   const archiveEmployee = useArchiveEmployee()
   const restoreEmployee = useRestoreEmployee()
+  const contractsQuery = useEmployeeContracts(id)
 
   async function confirmArchive() {
     if (!id) return
@@ -93,6 +105,9 @@ export function EmployeeDetailsPage() {
   }
 
   const employee = employeeQuery.data
+  const contracts = contractsQuery.data ?? []
+  const activeContract = contracts.find((contract) => contract.status === 'ACTIVE')
+  const previousContracts = contracts.filter((contract) => contract.id !== activeContract?.id)
 
   return (
     <div>
@@ -108,7 +123,7 @@ export function EmployeeDetailsPage() {
 
       <PageHeader
         title={`${employee.firstName} ${employee.lastName}`}
-        description={employee.positionTitle ? `${employee.positionTitle} · ${employee.departmentName ?? 'No department'}` : (employee.departmentName ?? undefined)}
+        description={employee.employeeCode}
         actions={
           <div className="flex items-center gap-2">
             <Badge variant={STATUS_BADGE_VARIANT[employee.status]}>
@@ -136,7 +151,7 @@ export function EmployeeDetailsPage() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Profile</CardTitle>
+            <CardTitle className="text-base">Personal information</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-4">
             <Field label="Employee code" value={employee.employeeCode} />
@@ -148,20 +163,76 @@ export function EmployeeDetailsPage() {
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Employment</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-base">Current active contract</CardTitle>
+            {canCreateContract && (
+              <Button size="sm" variant="outline" onClick={() => { setEditingContract(undefined); setContractFormOpen(true) }}>
+                <Plus />
+                New contract
+              </Button>
+            )}
           </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-4">
-            <Field label="Department" value={employee.departmentName ?? '—'} />
-            <Field label="Position" value={employee.positionTitle ?? '—'} />
-            <Field label="Employment type" value={employee.employmentType.replace('_', ' ')} />
-            <Field label="Employment status" value={employee.employmentStatus.replace('_', ' ')} />
-            <Field label="Weekly hours" value={String(employee.contractedWeeklyHours)} />
-            <Field label="Hire date" value={formatDate(employee.hireDate)} />
-            <Field label="Termination date" value={formatDate(employee.terminationDate)} />
+          <CardContent>
+            {contractsQuery.isLoading && (
+              <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" />
+                Loading contracts…
+              </div>
+            )}
+            {!contractsQuery.isLoading && !activeContract && (
+              <p className="py-4 text-sm text-muted-foreground">No active contract.</p>
+            )}
+            {activeContract && (
+              <div>
+                <div className="mb-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{activeContract.contractNumber}</span>
+                    <Badge variant={CONTRACT_STATUS_BADGE_VARIANT[activeContract.status]}>
+                      {CONTRACT_STATUS_LABELS[activeContract.status]}
+                    </Badge>
+                  </div>
+                  {canUpdateContract && (
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setEditingContract(activeContract)
+                          setContractFormOpen(true)
+                        }}
+                      >
+                        Edit
+                      </Button>
+                      <Button size="sm" variant="destructive" onClick={() => setEndingContract(activeContract)}>
+                        End
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="Contract type" value={CONTRACT_TYPE_LABELS[activeContract.contractType]} />
+                  <Field label="Department" value={activeContract.departmentName ?? '—'} />
+                  <Field label="Position" value={activeContract.positionTitle ?? '—'} />
+                  <Field label="Start date" value={formatDate(activeContract.startDate)} />
+                  <Field label="Weekly hours" value={String(activeContract.weeklyHours)} />
+                  <Field label="FTE" value={String(activeContract.fte)} />
+                  <Field label="Work week" value={WORK_WEEK_LABELS[activeContract.workWeek]} />
+                  <Field label="Vacation days/year" value={String(activeContract.vacationDaysPerYear)} />
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
+
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle className="text-base">Previous contracts</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ContractHistoryTimeline contracts={previousContracts} />
+        </CardContent>
+      </Card>
 
       <EmployeeFormDialog open={formOpen} onOpenChange={setFormOpen} employee={employee} />
 
@@ -173,6 +244,21 @@ export function EmployeeDetailsPage() {
         confirmLabel="Archive"
         isLoading={archiveEmployee.isPending}
         onConfirm={() => void confirmArchive()}
+      />
+
+      {id && (
+        <ContractFormDialog
+          open={contractFormOpen}
+          onOpenChange={setContractFormOpen}
+          contract={editingContract}
+          employeeId={id}
+        />
+      )}
+
+      <EndContractDialog
+        open={Boolean(endingContract)}
+        onOpenChange={(open) => !open && setEndingContract(undefined)}
+        contract={endingContract}
       />
     </div>
   )

@@ -149,8 +149,7 @@ export function DashboardPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
-                  <TableHead>Department</TableHead>
-                  <TableHead>Position</TableHead>
+                  <TableHead>Code</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
@@ -162,18 +161,17 @@ export function DashboardPage() {
                         {employee.firstName} {employee.lastName}
                       </Link>
                     </TableCell>
-                    <TableCell>{employee.departmentName ?? '—'}</TableCell>
-                    <TableCell>{employee.positionTitle ?? '—'}</TableCell>
+                    <TableCell>{employee.employeeCode}</TableCell>
                     <TableCell>
-                      <Badge variant={employee.employmentStatus === 'ACTIVE' ? 'success' : 'secondary'}>
-                        {employee.employmentStatus}
+                      <Badge variant={employee.status === 'ACTIVE' ? 'success' : 'secondary'}>
+                        {employee.status}
                       </Badge>
                     </TableCell>
                   </TableRow>
                 ))}
                 {employeesQuery.data?.items.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={4} className="py-6 text-center text-muted-foreground">
+                    <TableCell colSpan={3} className="py-6 text-center text-muted-foreground">
                       No employees yet.
                     </TableCell>
                   </TableRow>

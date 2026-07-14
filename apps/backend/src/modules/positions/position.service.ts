@@ -96,7 +96,7 @@ export async function archivePosition(companyId: string, id: string): Promise<Po
   if (!existing) {
     throw new NotFoundError("Position");
   }
-  if (existing._count.employees > 0) {
+  if (existing._count.employmentContracts > 0) {
     throw new ConflictError(
       `Cannot archive "${existing.title}" while it has active employees assigned. Reassign or archive them first.`,
     );

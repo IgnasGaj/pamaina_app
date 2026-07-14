@@ -37,6 +37,13 @@ router.get(
   asyncHandler(async (req, res) => employeeController.getById(req, res)),
 );
 
+router.get(
+  "/:id/contracts",
+  authorize(PERMISSIONS.CONTRACT_READ),
+  validate({ params: employeeIdParamsSchema }),
+  asyncHandler(async (req, res) => employeeController.getContracts(req, res)),
+);
+
 router.patch(
   "/:id",
   authorize(PERMISSIONS.EMPLOYEE_UPDATE),

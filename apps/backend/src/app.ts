@@ -17,6 +17,7 @@ import roleRoutes from "@/modules/roles/role.routes";
 import departmentRoutes from "@/modules/departments/department.routes";
 import positionRoutes from "@/modules/positions/position.routes";
 import employeeRoutes from "@/modules/employees/employee.routes";
+import contractRoutes from "@/modules/contracts/contract.routes";
 
 export function createApp(): Express {
   const app = express();
@@ -50,6 +51,7 @@ export function createApp(): Express {
   api.use("/departments", departmentRoutes);
   api.use("/positions", positionRoutes);
   api.use("/employees", employeeRoutes);
+  api.use("/contracts", contractRoutes);
 
   app.use(env.API_PREFIX, api);
 

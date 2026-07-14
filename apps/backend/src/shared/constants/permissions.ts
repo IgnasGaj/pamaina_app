@@ -29,6 +29,10 @@ export const PERMISSIONS = {
   EMPLOYEE_READ: "employee.read",
   EMPLOYEE_UPDATE: "employee.update",
   EMPLOYEE_DELETE: "employee.delete",
+
+  CONTRACT_CREATE: "contract.create",
+  CONTRACT_READ: "contract.read",
+  CONTRACT_UPDATE: "contract.update",
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

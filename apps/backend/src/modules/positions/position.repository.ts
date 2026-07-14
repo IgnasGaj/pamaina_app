@@ -6,12 +6,14 @@ import { toPrismaSkipTake } from "@/shared/utils/pagination.util";
 
 type Client = PrismaClient | Prisma.TransactionClient;
 
-// Only ACTIVE/INACTIVE (non-archived) employees count toward the
-// "active employees" figure shown on the position card.
+// "Active employees" now means active EMPLOYMENT CONTRACTS in this
+// position — Employee no longer carries department/position directly
+// (see EmploymentContract, the source of truth for who currently works
+// where).
 const positionWithRelations = Prisma.validator<Prisma.PositionDefaultArgs>()({
   include: {
     department: { select: { name: true } },
-    _count: { select: { employees: { where: { status: { not: "ARCHIVED" } } } } },
+    _count: { select: { employmentContracts: { where: { status: "ACTIVE" } } } },
   },
 });
 export type PositionWithRelations = Prisma.PositionGetPayload<typeof positionWithRelations>;
@@ -24,9 +26,10 @@ function buildOrderBy(
     case "createdAt":
       return [{ createdAt: sortOrder }];
     // Prisma's relation-count ordering can't apply the ACTIVE-only filter
-    // used for the displayed count, so this sorts by total employees.
+    // used for the displayed count, so this sorts by total contracts ever
+    // linked to the position.
     case "employeeCount":
-      return [{ employees: { _count: sortOrder } }];
+      return [{ employmentContracts: { _count: sortOrder } }];
     case "name":
     default:
       return [{ title: sortOrder }];

@@ -25,6 +25,9 @@ const PERMISSION_DESCRIPTIONS: Record<string, string> = {
   "employee.read": "View employee records",
   "employee.update": "Update employee records",
   "employee.delete": "Remove employee records",
+  "contract.create": "Create employment contracts",
+  "contract.read": "View employment contracts",
+  "contract.update": "Update or end employment contracts",
 };
 
 async function seedPermissions(): Promise<void> {

@@ -19,9 +19,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { EmployeeFormDialog } from '@/pages/employees/EmployeeFormDialog'
-import { useDepartments } from '@/hooks/useDepartments'
 import { useArchiveEmployee, useEmployees, useRestoreEmployee } from '@/hooks/useEmployees'
-import { usePositions } from '@/hooks/usePositions'
 import { getErrorMessage } from '@/lib/errors'
 import { useAuthStore } from '@/stores/auth.store'
 import { PERMISSIONS } from '@/types/auth.types'
@@ -51,16 +49,9 @@ interface SortOption {
 const SORT_OPTIONS: SortOption[] = [
   { value: 'name-asc', sortBy: 'name', sortOrder: 'asc', label: 'Name (A–Z)' },
   { value: 'name-desc', sortBy: 'name', sortOrder: 'desc', label: 'Name (Z–A)' },
-  { value: 'hireDate-desc', sortBy: 'hireDate', sortOrder: 'desc', label: 'Hire date (newest)' },
-  { value: 'hireDate-asc', sortBy: 'hireDate', sortOrder: 'asc', label: 'Hire date (oldest)' },
   { value: 'createdAt-desc', sortBy: 'createdAt', sortOrder: 'desc', label: 'Recently added' },
   { value: 'createdAt-asc', sortBy: 'createdAt', sortOrder: 'asc', label: 'Oldest added' },
 ]
-
-function formatDate(value: string | null): string {
-  if (!value) return '—'
-  return new Date(value).toLocaleDateString()
-}
 
 export function EmployeesPage() {
   const hasAnyPermission = useAuthStore((state) => state.hasAnyPermission)
@@ -70,8 +61,6 @@ export function EmployeesPage() {
 
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
-  const [departmentFilter, setDepartmentFilter] = useState(NONE_VALUE)
-  const [positionFilter, setPositionFilter] = useState(NONE_VALUE)
   const [statusFilter, setStatusFilter] = useState(NONE_VALUE)
   const [sort, setSort] = useState('name-asc')
   const [formOpen, setFormOpen] = useState(false)
@@ -80,15 +69,10 @@ export function EmployeesPage() {
 
   const activeSort = SORT_OPTIONS.find((option) => option.value === sort) ?? SORT_OPTIONS[0]
 
-  const departmentsQuery = useDepartments({ pageSize: 100 })
-  const positionsQuery = usePositions({ pageSize: 100 })
-
   const employeesQuery = useEmployees({
     page,
     pageSize: 20,
     search: search || undefined,
-    departmentId: departmentFilter === NONE_VALUE ? undefined : departmentFilter,
-    positionId: positionFilter === NONE_VALUE ? undefined : positionFilter,
     status: statusFilter === NONE_VALUE ? undefined : (statusFilter as EmployeeStatus),
     sortBy: activeSort.sortBy,
     sortOrder: activeSort.sortOrder,
@@ -164,46 +148,6 @@ export function EmployeesPage() {
             </div>
 
             <Select
-              value={departmentFilter}
-              onValueChange={(value) => {
-                setDepartmentFilter(value)
-                resetToFirstPage()
-              }}
-            >
-              <SelectTrigger className="w-44">
-                <SelectValue placeholder="Department" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={NONE_VALUE}>All departments</SelectItem>
-                {departmentsQuery.data?.items.map((department) => (
-                  <SelectItem key={department.id} value={department.id}>
-                    {department.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select
-              value={positionFilter}
-              onValueChange={(value) => {
-                setPositionFilter(value)
-                resetToFirstPage()
-              }}
-            >
-              <SelectTrigger className="w-44">
-                <SelectValue placeholder="Position" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={NONE_VALUE}>All positions</SelectItem>
-                {positionsQuery.data?.items.map((position) => (
-                  <SelectItem key={position.id} value={position.id}>
-                    {position.title}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select
               value={statusFilter}
               onValueChange={(value) => {
                 setStatusFilter(value)
@@ -242,9 +186,7 @@ export function EmployeesPage() {
               <TableRow>
                 <TableHead>Code</TableHead>
                 <TableHead>Name</TableHead>
-                <TableHead>Department</TableHead>
-                <TableHead>Position</TableHead>
-                <TableHead>Hire date</TableHead>
+                <TableHead>Email</TableHead>
                 <TableHead>Status</TableHead>
                 {(canUpdate || canDelete) && <TableHead className="w-10" />}
               </TableRow>
@@ -252,7 +194,7 @@ export function EmployeesPage() {
             <TableBody>
               {employeesQuery.isLoading && (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+                  <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
                     <div className="flex items-center justify-center gap-2">
                       <Loader2 className="size-4 animate-spin" />
                       Loading employees…
@@ -263,7 +205,7 @@ export function EmployeesPage() {
 
               {employeesQuery.isError && (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-8 text-center">
+                  <TableCell colSpan={5} className="py-8 text-center">
                     <p className="text-sm text-destructive">{getErrorMessage(employeesQuery.error)}</p>
                     <Button
                       variant="outline"
@@ -279,8 +221,8 @@ export function EmployeesPage() {
 
               {!employeesQuery.isLoading && !employeesQuery.isError && employees.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
-                    {search || departmentFilter !== NONE_VALUE || positionFilter !== NONE_VALUE || statusFilter !== NONE_VALUE
+                  <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                    {search || statusFilter !== NONE_VALUE
                       ? 'No employees match your filters.'
                       : 'No employees yet. Add your first employee to get started.'}
                   </TableCell>
@@ -297,9 +239,7 @@ export function EmployeesPage() {
                         {employee.firstName} {employee.lastName}
                       </Link>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{employee.departmentName ?? '—'}</TableCell>
-                    <TableCell className="text-muted-foreground">{employee.positionTitle ?? '—'}</TableCell>
-                    <TableCell className="text-muted-foreground">{formatDate(employee.hireDate)}</TableCell>
+                    <TableCell className="text-muted-foreground">{employee.email ?? '—'}</TableCell>
                     <TableCell>
                       <Badge variant={STATUS_BADGE_VARIANT[employee.status]}>
                         {employee.status.charAt(0) + employee.status.slice(1).toLowerCase()}

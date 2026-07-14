@@ -40,12 +40,13 @@ model Company {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  roles       Role[]
-  users       User[]
-  departments Department[]
-  positions   Position[]
-  employees   Employee[]
-  settings    CompanySettings?
+  roles               Role[]
+  users               User[]
+  departments         Department[]
+  positions           Position[]
+  employees           Employee[]
+  employmentContracts EmploymentContract[]
+  settings            CompanySettings?
 
   @@index([isActive])
   @@map("companies")
@@ -232,9 +233,9 @@ model Department {
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
 
-  company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  positions Position[]
-  employees Employee[]
+  company             Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  positions           Position[]
+  employmentContracts EmploymentContract[]
 
   @@unique([companyId, name])
   @@index([companyId])
@@ -254,9 +255,9 @@ model Position {
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
-  company    Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  department Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
-  employees  Employee[]
+  company             Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  department          Department?          @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  employmentContracts EmploymentContract[]
 
   @@unique([companyId, title])
   @@index([companyId])
@@ -268,40 +269,27 @@ model Position {
 // People
 // ─────────────────────────────────────────────────────────────────────────
 
-enum EmploymentType {
-  FULL_TIME
-  PART_TIME
-  CONTRACT
-  TEMPORARY
-  SEASONAL
-}
-
-enum EmploymentStatus {
-  ACTIVE
-  ON_LEAVE
-  SUSPENDED
-  TERMINATED
-}
-
-/// Record lifecycle status for the Employee Management module — distinct
-/// from EmploymentStatus (which tracks real-world employment state).
-/// ARCHIVED is only reached via the dedicated archive endpoint and is the
-/// module's soft-delete state; records are never hard-deleted.
+/// Record lifecycle status for the Employee Management module — this is
+/// about the PERSON record, not their employment. ARCHIVED is only reached
+/// via the dedicated archive endpoint and is the module's soft-delete
+/// state; records are never hard-deleted.
 enum EmployeeStatus {
   ACTIVE
   INACTIVE
   ARCHIVED
 }
 
+/// Employees represent PEOPLE. All employment-specific information (which
+/// department/position, hours, contract dates, ...) lives on
+/// EmploymentContract instead, since a person can have multiple contracts
+/// over time and scheduling/vacations must key off the contract, not the
+/// person record.
 model Employee {
   id        String  @id @default(uuid())
   companyId String  @map("company_id")
   /// Optional link to a login-capable User. Not every employee record
   /// needs platform access (e.g. added ahead of onboarding).
   userId    String? @unique @map("user_id")
-
-  departmentId String? @map("department_id")
-  positionId   String? @map("position_id")
 
   /// Company-scoped personnel number (e.g. "EMP-0042").
   employeeCode String  @map("employee_code")
@@ -313,14 +301,6 @@ model Employee {
   personalCode String? @map("personal_code")
   birthDate    DateTime? @map("birth_date") @db.Date
 
-  employmentType   EmploymentType   @default(FULL_TIME) @map("employment_type")
-  employmentStatus EmploymentStatus @default(ACTIVE) @map("employment_status")
-  /// Contracted hours per week, used by working-hours calculations.
-  contractedWeeklyHours Decimal @default(40) @map("contracted_weekly_hours") @db.Decimal(5, 2)
-
-  hireDate        DateTime  @map("hire_date") @db.Date
-  terminationDate DateTime? @map("termination_date") @db.Date
-
   /// Record lifecycle: ACTIVE/INACTIVE are editable directly; ARCHIVED is
   /// only set by the archive endpoint, in lockstep with deletedAt/isActive.
   status    EmployeeStatus @default(ACTIVE)
@@ -329,15 +309,88 @@ model Employee {
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
 
-  company    Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  user       User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
-  department Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
-  position   Position?   @relation(fields: [positionId], references: [id], onDelete: SetNull)
+  company             Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user                User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
+  employmentContracts EmploymentContract[]
 
   @@unique([companyId, employeeCode])
   @@index([companyId])
   @@index([companyId, status])
+  @@map("employees")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Employment contracts — the single source of truth for scheduling,
+// vacation calculations, monthly required hours, and (future) payroll.
+// ─────────────────────────────────────────────────────────────────────────
+
+enum ContractStatus {
+  ACTIVE
+  ENDED
+  SUSPENDED
+  DRAFT
+}
+
+enum ContractType {
+  PERMANENT
+  FIXED_TERM
+  SEASONAL
+  TEMPORARY
+  INTERNSHIP
+}
+
+enum WorkWeek {
+  FIVE_DAY
+  SIX_DAY
+  CUSTOM
+}
+
+model EmploymentContract {
+  id           String  @id @default(uuid())
+  companyId    String  @map("company_id")
+  employeeId   String  @map("employee_id")
+  departmentId String? @map("department_id")
+  positionId   String? @map("position_id")
+
+  /// Company-scoped contract number (e.g. "CTR-0042").
+  contractNumber String         @map("contract_number")
+  status         ContractStatus @default(ACTIVE)
+  contractType   ContractType   @map("contract_type")
+
+  startDate         DateTime  @map("start_date") @db.Date
+  endDate           DateTime? @map("end_date") @db.Date
+  probationEndDate  DateTime? @map("probation_end_date") @db.Date
+
+  weeklyHours Decimal  @default(40) @map("weekly_hours") @db.Decimal(5, 2)
+  dailyHours  Decimal  @default(8) @map("daily_hours") @db.Decimal(4, 2)
+  /// Full-time equivalent, 0.1–1.0.
+  fte         Decimal  @default(1.0) @db.Decimal(3, 2)
+  workWeek    WorkWeek @default(FIVE_DAY) @map("work_week")
+
+  vacationDaysPerYear   Int     @default(20) @map("vacation_days_per_year")
+  /// "Suminė darbo laiko apskaita" — aggregated/summarized working time
+  /// accounting, common for shift-based Lithuanian workplaces.
+  summarizedWorkingTime Boolean @default(false) @map("summarized_working_time")
+
+  canWorkWeekends Boolean @default(true) @map("can_work_weekends")
+  canWorkHolidays Boolean @default(false) @map("can_work_holidays")
+  canWorkNights   Boolean @default(true) @map("can_work_nights")
+
+  notes String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  company    Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employee   Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  department Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  position   Position?   @relation(fields: [positionId], references: [id], onDelete: SetNull)
+
+  @@unique([companyId, contractNumber])
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([companyId, employeeId, status])
   @@index([departmentId])
   @@index([positionId])
-  @@map("employees")
+  @@map("employment_contracts")
 }

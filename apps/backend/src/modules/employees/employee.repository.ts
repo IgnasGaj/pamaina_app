@@ -1,4 +1,4 @@
-import { Prisma, PrismaClient } from "@prisma/client";
+import { Employee, Prisma, PrismaClient } from "@prisma/client";
 import { prisma } from "@/config/prisma";
 import { EmployeeSortBy } from "@/modules/employees/employee.dto";
 import { PaginationQuery } from "@/shared/types/pagination.types";
@@ -6,20 +6,9 @@ import { toPrismaSkipTake } from "@/shared/utils/pagination.util";
 
 type Client = PrismaClient | Prisma.TransactionClient;
 
-const employeeWithRelations = Prisma.validator<Prisma.EmployeeDefaultArgs>()({
-  include: {
-    department: { select: { name: true } },
-    position: { select: { title: true } },
-  },
-});
-export type EmployeeWithRelations = Prisma.EmployeeGetPayload<typeof employeeWithRelations>;
-
 export interface ListEmployeesFilter {
   companyId: string;
   search?: string;
-  departmentId?: string;
-  positionId?: string;
-  employmentStatus?: Prisma.EmployeeWhereInput["employmentStatus"];
   status?: Prisma.EmployeeWhereInput["status"];
   sortBy: EmployeeSortBy;
   sortOrder: "asc" | "desc";
@@ -29,8 +18,6 @@ export interface ListEmployeesFilter {
 
 function buildOrderBy(sortBy: EmployeeSortBy, sortOrder: "asc" | "desc"): Prisma.EmployeeOrderByWithRelationInput[] {
   switch (sortBy) {
-    case "hireDate":
-      return [{ hireDate: sortOrder }];
     case "createdAt":
       return [{ createdAt: sortOrder }];
     case "name":
@@ -40,8 +27,8 @@ function buildOrderBy(sortBy: EmployeeSortBy, sortOrder: "asc" | "desc"): Prisma
 }
 
 export class EmployeeRepository {
-  async create(data: Prisma.EmployeeUncheckedCreateInput, client: Client = prisma): Promise<EmployeeWithRelations> {
-    return client.employee.create({ data, include: employeeWithRelations.include });
+  async create(data: Prisma.EmployeeUncheckedCreateInput, client: Client = prisma): Promise<Employee> {
+    return client.employee.create({ data });
   }
 
   /**
@@ -50,37 +37,31 @@ export class EmployeeRepository {
    * employee by id. List-view visibility is controlled by findMany's status
    * scoping instead.
    */
-  async findByIdInCompany(id: string, companyId: string, client: Client = prisma): Promise<EmployeeWithRelations | null> {
-    return client.employee.findFirst({
-      where: { id, companyId },
-      include: employeeWithRelations.include,
-    });
+  async findByIdInCompany(id: string, companyId: string, client: Client = prisma): Promise<Employee | null> {
+    return client.employee.findFirst({ where: { id, companyId } });
   }
 
-  async findByUserId(userId: string, companyId: string, client: Client = prisma): Promise<EmployeeWithRelations | null> {
-    return client.employee.findFirst({
-      where: { userId, companyId, deletedAt: null },
-      include: employeeWithRelations.include,
-    });
+  async findByUserId(userId: string, companyId: string, client: Client = prisma): Promise<Employee | null> {
+    return client.employee.findFirst({ where: { userId, companyId, deletedAt: null } });
   }
 
   async countInCompany(companyId: string, client: Client = prisma): Promise<number> {
     return client.employee.count({ where: { companyId } });
   }
 
-  async findByCodeInCompany(employeeCode: string, companyId: string, client: Client = prisma) {
+  async findByCodeInCompany(employeeCode: string, companyId: string, client: Client = prisma): Promise<Employee | null> {
     return client.employee.findFirst({ where: { employeeCode, companyId } });
   }
 
-  async update(id: string, data: Prisma.EmployeeUpdateInput, client: Client = prisma): Promise<EmployeeWithRelations> {
-    return client.employee.update({ where: { id }, data, include: employeeWithRelations.include });
+  async update(id: string, data: Prisma.EmployeeUpdateInput, client: Client = prisma): Promise<Employee> {
+    return client.employee.update({ where: { id }, data });
   }
 
   async findMany(
     filter: ListEmployeesFilter,
     pagination: PaginationQuery,
     client: Client = prisma,
-  ): Promise<{ items: EmployeeWithRelations[]; total: number }> {
+  ): Promise<{ items: Employee[]; total: number }> {
     const { skip, take } = toPrismaSkipTake(pagination);
     const where: Prisma.EmployeeWhereInput = {
       companyId: filter.companyId,
@@ -88,9 +69,6 @@ export class EmployeeRepository {
       // (including ARCHIVED) always takes precedence over that default.
       ...(filter.status ? { status: filter.status } : { status: { not: "ARCHIVED" } }),
       ...(filter.restrictToUserId ? { userId: filter.restrictToUserId } : {}),
-      ...(filter.departmentId ? { departmentId: filter.departmentId } : {}),
-      ...(filter.positionId ? { positionId: filter.positionId } : {}),
-      ...(filter.employmentStatus ? { employmentStatus: filter.employmentStatus } : {}),
       ...(filter.search
         ? {
             OR: [
@@ -106,13 +84,7 @@ export class EmployeeRepository {
     };
 
     const [items, total] = await Promise.all([
-      client.employee.findMany({
-        where,
-        include: employeeWithRelations.include,
-        skip,
-        take,
-        orderBy: buildOrderBy(filter.sortBy, filter.sortOrder),
-      }),
+      client.employee.findMany({ where, skip, take, orderBy: buildOrderBy(filter.sortBy, filter.sortOrder) }),
       client.employee.count({ where }),
     ]);
     return { items, total };

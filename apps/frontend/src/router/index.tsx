@@ -8,8 +8,7 @@ import { LoginPage } from '@/pages/auth/LoginPage'
 import { RegisterCompanyPage } from '@/pages/auth/RegisterCompanyPage'
 import { OnboardingPage } from '@/pages/onboarding/OnboardingPage'
 import { DashboardPage } from '@/pages/DashboardPage'
-import { DepartmentsPage } from '@/pages/departments/DepartmentsPage'
-import { PositionsPage } from '@/pages/positions/PositionsPage'
+import { OrganizationPage } from '@/pages/organization/OrganizationPage'
 import { EmployeesPage } from '@/pages/employees/EmployeesPage'
 import { EmployeeDetailsPage } from '@/pages/employees/EmployeeDetailsPage'
 import { UsersPage } from '@/pages/users/UsersPage'
@@ -41,12 +40,10 @@ export const router = createBrowserRouter([
                 ],
               },
               {
-                element: <RequirePermission anyOf={[PERMISSIONS.DEPARTMENT_READ]} />,
-                children: [{ path: 'departments', element: <DepartmentsPage /> }],
-              },
-              {
-                element: <RequirePermission anyOf={[PERMISSIONS.POSITION_READ]} />,
-                children: [{ path: 'positions', element: <PositionsPage /> }],
+                element: (
+                  <RequirePermission anyOf={[PERMISSIONS.DEPARTMENT_READ, PERMISSIONS.POSITION_READ]} />
+                ),
+                children: [{ path: 'organization', element: <OrganizationPage /> }],
               },
               {
                 element: <RequirePermission anyOf={[PERMISSIONS.USER_READ]} />,

@@ -92,11 +92,11 @@ export async function registerCompany(dto: RegisterCompanyDto, ctx: RequestConte
     // working baseline (an employee can be added immediately) and a stable
     // 1:1 CompanySettings record for the onboarding wizard to update.
     const generalDepartment = await departmentRepository.create(
-      { companyId: company.id, name: "General" },
+      { companyId: company.id, name: "General", color: "#2563EB" },
       tx,
     );
     await positionRepository.create(
-      { companyId: company.id, title: "Employee", departmentId: generalDepartment.id },
+      { companyId: company.id, title: "Employee", color: "#2563EB", departmentId: generalDepartment.id },
       tx,
     );
     await companySettingsRepository.create({ companyId: company.id }, tx);

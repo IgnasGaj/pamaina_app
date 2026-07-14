@@ -10,7 +10,8 @@ export function Sidebar() {
 
   const visibleItems = NAV_ITEMS.filter((item) => {
     if (item.roleKey && user?.roleKey !== item.roleKey) return false
-    if (item.permission && !hasAnyPermission([item.permission])) return false
+    if (item.permission && !hasAnyPermission(Array.isArray(item.permission) ? item.permission : [item.permission]))
+      return false
     return true
   })
 

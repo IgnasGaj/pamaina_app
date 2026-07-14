@@ -97,7 +97,9 @@ export function DashboardPage() {
           </div>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             {canCreateEmployees && <QuickAction to="/employees" label="Add employee" icon={UserPlus} />}
-            {canCreateDepartments && <QuickAction to="/departments" label="Create department" icon={Building2} />}
+            {canCreateDepartments && (
+              <QuickAction to="/organization?tab=departments" label="Create department" icon={Building2} />
+            )}
             {user?.roleKey === 'COMPANY_OWNER' && (
               <QuickAction to="/settings/company" label="Settings" icon={Settings} />
             )}

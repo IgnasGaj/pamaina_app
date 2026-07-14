@@ -44,11 +44,18 @@ router.patch(
   asyncHandler(async (req, res) => departmentController.update(req, res)),
 );
 
-router.delete(
-  "/:id",
+router.post(
+  "/:id/archive",
   authorize(PERMISSIONS.DEPARTMENT_DELETE),
   validate({ params: departmentIdParamsSchema }),
-  asyncHandler(async (req, res) => departmentController.remove(req, res)),
+  asyncHandler(async (req, res) => departmentController.archive(req, res)),
+);
+
+router.post(
+  "/:id/restore",
+  authorize(PERMISSIONS.DEPARTMENT_DELETE),
+  validate({ params: departmentIdParamsSchema }),
+  asyncHandler(async (req, res) => departmentController.restore(req, res)),
 );
 
 export default router;

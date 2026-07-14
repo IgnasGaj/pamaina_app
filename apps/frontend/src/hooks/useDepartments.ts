@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import {
+  archiveDepartment,
   createDepartment,
-  deleteDepartment,
   getDepartment,
   listDepartments,
+  restoreDepartment,
   updateDepartment,
 } from '@/api/departments.api'
 import type { CreateDepartmentPayload, ListDepartmentsQuery, UpdateDepartmentPayload } from '@/types/department.types'
@@ -53,12 +54,24 @@ export function useUpdateDepartment(id: string) {
   })
 }
 
-export function useDeleteDepartment() {
+export function useArchiveDepartment() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (id: string) => deleteDepartment(id),
-    onSuccess: () => {
+    mutationFn: (id: string) => archiveDepartment(id),
+    onSuccess: (_data, id) => {
       void queryClient.invalidateQueries({ queryKey: departmentKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: departmentKeys.detail(id) })
+    },
+  })
+}
+
+export function useRestoreDepartment() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => restoreDepartment(id),
+    onSuccess: (_data, id) => {
+      void queryClient.invalidateQueries({ queryKey: departmentKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: departmentKeys.detail(id) })
     },
   })
 }

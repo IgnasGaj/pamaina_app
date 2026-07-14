@@ -32,8 +32,14 @@ export async function list(req: Request, res: Response): Promise<void> {
   sendSuccess(res, result.items, 200, { pagination: result.meta });
 }
 
-export async function remove(req: Request, res: Response): Promise<void> {
+export async function archive(req: Request, res: Response): Promise<void> {
   const { id } = req.params as { id: string };
-  await departmentService.deleteDepartment(req.user!.companyId!, id);
-  sendSuccess(res, { id });
+  const department = await departmentService.archiveDepartment(req.user!.companyId!, id);
+  sendSuccess(res, department);
+}
+
+export async function restore(req: Request, res: Response): Promise<void> {
+  const { id } = req.params as { id: string };
+  const department = await departmentService.restoreDepartment(req.user!.companyId!, id);
+  sendSuccess(res, department);
 }

@@ -28,8 +28,14 @@ export async function list(req: Request, res: Response): Promise<void> {
   sendSuccess(res, result.items, 200, { pagination: result.meta });
 }
 
-export async function remove(req: Request, res: Response): Promise<void> {
+export async function archive(req: Request, res: Response): Promise<void> {
   const { id } = req.params as { id: string };
-  await positionService.deletePosition(req.user!.companyId!, id);
-  sendSuccess(res, { id });
+  const position = await positionService.archivePosition(req.user!.companyId!, id);
+  sendSuccess(res, position);
+}
+
+export async function restore(req: Request, res: Response): Promise<void> {
+  const { id } = req.params as { id: string };
+  const position = await positionService.restorePosition(req.user!.companyId!, id);
+  sendSuccess(res, position);
 }

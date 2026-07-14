@@ -44,11 +44,18 @@ router.patch(
   asyncHandler(async (req, res) => positionController.update(req, res)),
 );
 
-router.delete(
-  "/:id",
+router.post(
+  "/:id/archive",
   authorize(PERMISSIONS.POSITION_DELETE),
   validate({ params: positionIdParamsSchema }),
-  asyncHandler(async (req, res) => positionController.remove(req, res)),
+  asyncHandler(async (req, res) => positionController.archive(req, res)),
+);
+
+router.post(
+  "/:id/restore",
+  authorize(PERMISSIONS.POSITION_DELETE),
+  validate({ params: positionIdParamsSchema }),
+  asyncHandler(async (req, res) => positionController.restore(req, res)),
 );
 
 export default router;

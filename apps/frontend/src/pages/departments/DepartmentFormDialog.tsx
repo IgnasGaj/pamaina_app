@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useEffect } from 'react'
-import { useForm } from 'react-hook-form'
+import { Controller, useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { z } from 'zod'
 
@@ -15,6 +15,8 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
+import { ColorPickerInput } from '@/components/shared/ColorPickerInput'
 import { useCreateDepartment, useUpdateDepartment } from '@/hooks/useDepartments'
 import { getErrorMessage } from '@/lib/errors'
 import type { Department } from '@/types/department.types'
@@ -22,6 +24,8 @@ import type { Department } from '@/types/department.types'
 const departmentSchema = z.object({
   name: z.string().min(1, 'Name is required').max(200),
   description: z.string().max(1000).optional().or(z.literal('')),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Enter a valid hex color'),
+  isActive: z.boolean(),
 })
 
 type DepartmentFormValues = z.infer<typeof departmentSchema>
@@ -43,26 +47,40 @@ export function DepartmentFormDialog({
     register,
     handleSubmit,
     reset,
+    control,
     formState: { errors },
   } = useForm<DepartmentFormValues>({
     resolver: zodResolver(departmentSchema),
-    defaultValues: { name: '', description: '' },
+    defaultValues: { name: '', description: '', color: '#2563EB', isActive: true },
   })
 
   useEffect(() => {
     if (open) {
-      reset({ name: department?.name ?? '', description: department?.description ?? '' })
+      reset({
+        name: department?.name ?? '',
+        description: department?.description ?? '',
+        color: department?.color ?? '#2563EB',
+        isActive: department?.isActive ?? true,
+      })
     }
   }, [open, department, reset])
 
   async function onSubmit(values: DepartmentFormValues) {
-    const payload = { name: values.name, description: values.description || undefined }
     try {
       if (isEditing) {
-        await updateDepartment.mutateAsync(payload)
+        await updateDepartment.mutateAsync({
+          name: values.name,
+          description: values.description || undefined,
+          color: values.color,
+          isActive: values.isActive,
+        })
         toast.success('Department updated')
       } else {
-        await createDepartment.mutateAsync(payload)
+        await createDepartment.mutateAsync({
+          name: values.name,
+          description: values.description || undefined,
+          color: values.color,
+        })
         toast.success('Department created')
       }
       onOpenChange(false)
@@ -93,6 +111,29 @@ export function DepartmentFormDialog({
             <Input id="description" {...register('description')} />
             {errors.description && <p className="text-sm text-destructive">{errors.description.message}</p>}
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="color">Color</Label>
+            <Controller
+              control={control}
+              name="color"
+              render={({ field }) => <ColorPickerInput id="color" value={field.value} onChange={field.onChange} />}
+            />
+            {errors.color && <p className="text-sm text-destructive">{errors.color.message}</p>}
+          </div>
+          {isEditing && (
+            <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
+              <Label htmlFor="isActive" className="cursor-pointer">
+                Active
+              </Label>
+              <Controller
+                control={control}
+                name="isActive"
+                render={({ field }) => (
+                  <Switch id="isActive" checked={field.value} onCheckedChange={field.onChange} />
+                )}
+              />
+            </div>
+          )}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel

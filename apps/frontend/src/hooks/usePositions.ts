@@ -1,6 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { createPosition, deletePosition, getPosition, listPositions, updatePosition } from '@/api/positions.api'
+import {
+  archivePosition,
+  createPosition,
+  getPosition,
+  listPositions,
+  restorePosition,
+  updatePosition,
+} from '@/api/positions.api'
 import type { CreatePositionPayload, ListPositionsQuery, UpdatePositionPayload } from '@/types/position.types'
 
 export const positionKeys = {
@@ -47,12 +54,24 @@ export function useUpdatePosition(id: string) {
   })
 }
 
-export function useDeletePosition() {
+export function useArchivePosition() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (id: string) => deletePosition(id),
-    onSuccess: () => {
+    mutationFn: (id: string) => archivePosition(id),
+    onSuccess: (_data, id) => {
       void queryClient.invalidateQueries({ queryKey: positionKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: positionKeys.detail(id) })
+    },
+  })
+}
+
+export function useRestorePosition() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => restorePosition(id),
+    onSuccess: (_data, id) => {
+      void queryClient.invalidateQueries({ queryKey: positionKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: positionKeys.detail(id) })
     },
   })
 }

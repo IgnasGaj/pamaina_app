@@ -16,6 +16,8 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
+import { ColorPickerInput } from '@/components/shared/ColorPickerInput'
 import { useDepartments } from '@/hooks/useDepartments'
 import { useCreatePosition, useUpdatePosition } from '@/hooks/usePositions'
 import { getErrorMessage } from '@/lib/errors'
@@ -26,7 +28,9 @@ const NONE_VALUE = '__none__'
 const positionSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200),
   description: z.string().max(1000).optional().or(z.literal('')),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Enter a valid hex color'),
   departmentId: z.string(),
+  isActive: z.boolean(),
 })
 
 type PositionFormValues = z.infer<typeof positionSchema>
@@ -53,7 +57,7 @@ export function PositionFormDialog({
     formState: { errors },
   } = useForm<PositionFormValues>({
     resolver: zodResolver(positionSchema),
-    defaultValues: { title: '', description: '', departmentId: NONE_VALUE },
+    defaultValues: { title: '', description: '', color: '#2563EB', departmentId: NONE_VALUE, isActive: true },
   })
 
   useEffect(() => {
@@ -61,7 +65,9 @@ export function PositionFormDialog({
       reset({
         title: position?.title ?? '',
         description: position?.description ?? '',
+        color: position?.color ?? '#2563EB',
         departmentId: position?.departmentId ?? NONE_VALUE,
+        isActive: position?.isActive ?? true,
       })
     }
   }, [open, position, reset])
@@ -73,13 +79,16 @@ export function PositionFormDialog({
         await updatePosition.mutateAsync({
           title: values.title,
           description: values.description || undefined,
+          color: values.color,
           departmentId: departmentId ?? null,
+          isActive: values.isActive,
         })
         toast.success('Position updated')
       } else {
         await createPosition.mutateAsync({
           title: values.title,
           description: values.description || undefined,
+          color: values.color,
           departmentId,
         })
         toast.success('Position created')
@@ -112,6 +121,15 @@ export function PositionFormDialog({
             <Input id="description" {...register('description')} />
           </div>
           <div className="space-y-2">
+            <Label htmlFor="color">Color</Label>
+            <Controller
+              control={control}
+              name="color"
+              render={({ field }) => <ColorPickerInput id="color" value={field.value} onChange={field.onChange} />}
+            />
+            {errors.color && <p className="text-sm text-destructive">{errors.color.message}</p>}
+          </div>
+          <div className="space-y-2">
             <Label>Department</Label>
             <Controller
               control={control}
@@ -133,6 +151,20 @@ export function PositionFormDialog({
               )}
             />
           </div>
+          {isEditing && (
+            <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
+              <Label htmlFor="isActive" className="cursor-pointer">
+                Active
+              </Label>
+              <Controller
+                control={control}
+                name="isActive"
+                render={({ field }) => (
+                  <Switch id="isActive" checked={field.value} onCheckedChange={field.onChange} />
+                )}
+              />
+            </div>
+          )}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel

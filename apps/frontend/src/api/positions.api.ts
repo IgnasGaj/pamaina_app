@@ -23,6 +23,10 @@ export function updatePosition(id: string, payload: UpdatePositionPayload): Prom
   return unwrap(apiClient.patch(`/positions/${id}`, payload))
 }
 
-export function deletePosition(id: string): Promise<void> {
-  return unwrap(apiClient.delete(`/positions/${id}`))
+export function archivePosition(id: string): Promise<Position> {
+  return unwrap(apiClient.post(`/positions/${id}/archive`))
+}
+
+export function restorePosition(id: string): Promise<Position> {
+  return unwrap(apiClient.post(`/positions/${id}/restore`))
 }

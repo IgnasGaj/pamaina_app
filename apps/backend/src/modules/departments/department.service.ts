@@ -15,7 +15,12 @@ export async function createDepartment(companyId: string, dto: CreateDepartmentD
   if (existing) {
     throw new ConflictError("A department with this name already exists");
   }
-  const department = await departmentRepository.create({ companyId, name: dto.name, description: dto.description });
+  const department = await departmentRepository.create({
+    companyId,
+    name: dto.name,
+    description: dto.description,
+    color: dto.color,
+  });
   return toDepartmentResponseDto(department);
 }
 
@@ -52,14 +57,36 @@ export async function listDepartments(
   companyId: string,
   query: ListDepartmentsQuery,
 ): Promise<PaginatedResult<DepartmentResponseDto>> {
-  const { items, total } = await departmentRepository.findMany(companyId, query.search, query);
+  const { items, total } = await departmentRepository.findMany(
+    companyId,
+    { search: query.search, status: query.status },
+    { sortBy: query.sortBy, sortOrder: query.sortOrder },
+    query,
+  );
   return buildPaginatedResult(items.map(toDepartmentResponseDto), query, total);
 }
 
-export async function deleteDepartment(companyId: string, id: string): Promise<void> {
+export async function archiveDepartment(companyId: string, id: string): Promise<DepartmentResponseDto> {
   const existing = await departmentRepository.findByIdInCompany(id, companyId);
   if (!existing) {
     throw new NotFoundError("Department");
   }
-  await departmentRepository.softDelete(id);
+  if (existing._count.employees > 0) {
+    throw new ConflictError(
+      `Cannot archive "${existing.name}" while it has active employees assigned. Reassign or archive them first.`,
+    );
+  }
+  await departmentRepository.archive(id);
+  const updated = await departmentRepository.findByIdInCompany(id, companyId);
+  return toDepartmentResponseDto(updated!);
+}
+
+export async function restoreDepartment(companyId: string, id: string): Promise<DepartmentResponseDto> {
+  const existing = await departmentRepository.findByIdInCompany(id, companyId);
+  if (!existing) {
+    throw new NotFoundError("Department");
+  }
+  await departmentRepository.restore(id);
+  const updated = await departmentRepository.findByIdInCompany(id, companyId);
+  return toDepartmentResponseDto(updated!);
 }

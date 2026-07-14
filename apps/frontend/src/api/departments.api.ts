@@ -23,6 +23,10 @@ export function updateDepartment(id: string, payload: UpdateDepartmentPayload): 
   return unwrap(apiClient.patch(`/departments/${id}`, payload))
 }
 
-export function deleteDepartment(id: string): Promise<void> {
-  return unwrap(apiClient.delete(`/departments/${id}`))
+export function archiveDepartment(id: string): Promise<Department> {
+  return unwrap(apiClient.post(`/departments/${id}/archive`))
+}
+
+export function restoreDepartment(id: string): Promise<Department> {
+  return unwrap(apiClient.post(`/departments/${id}/restore`))
 }

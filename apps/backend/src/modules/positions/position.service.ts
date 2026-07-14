@@ -30,6 +30,7 @@ export async function createPosition(companyId: string, dto: CreatePositionDto):
     companyId,
     title: dto.title,
     description: dto.description,
+    color: dto.color,
     departmentId: dto.departmentId,
   });
   return toPositionResponseDto(position);
@@ -67,6 +68,7 @@ export async function updatePosition(
   const updated = await positionRepository.update(id, {
     title: dto.title,
     description: dto.description,
+    color: dto.color,
     isActive: dto.isActive,
     ...(dto.departmentId !== undefined
       ? { department: dto.departmentId ? { connect: { id: dto.departmentId } } : { disconnect: true } }
@@ -82,16 +84,34 @@ export async function listPositions(
 ): Promise<PaginatedResult<PositionResponseDto>> {
   const { items, total } = await positionRepository.findMany(
     companyId,
-    { search: query.search, departmentId: query.departmentId },
+    { search: query.search, departmentId: query.departmentId, status: query.status },
+    { sortBy: query.sortBy, sortOrder: query.sortOrder },
     query,
   );
   return buildPaginatedResult(items.map(toPositionResponseDto), query, total);
 }
 
-export async function deletePosition(companyId: string, id: string): Promise<void> {
+export async function archivePosition(companyId: string, id: string): Promise<PositionResponseDto> {
   const existing = await positionRepository.findByIdInCompany(id, companyId);
   if (!existing) {
     throw new NotFoundError("Position");
   }
-  await positionRepository.softDelete(id);
+  if (existing._count.employees > 0) {
+    throw new ConflictError(
+      `Cannot archive "${existing.title}" while it has active employees assigned. Reassign or archive them first.`,
+    );
+  }
+  await positionRepository.archive(id);
+  const updated = await positionRepository.findByIdInCompany(id, companyId);
+  return toPositionResponseDto(updated!);
+}
+
+export async function restorePosition(companyId: string, id: string): Promise<PositionResponseDto> {
+  const existing = await positionRepository.findByIdInCompany(id, companyId);
+  if (!existing) {
+    throw new NotFoundError("Position");
+  }
+  await positionRepository.restore(id);
+  const updated = await positionRepository.findByIdInCompany(id, companyId);
+  return toPositionResponseDto(updated!);
 }

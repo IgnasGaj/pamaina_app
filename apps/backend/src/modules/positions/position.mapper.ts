@@ -9,7 +9,9 @@ export function toPositionResponseDto(position: PositionWithRelations): Position
     departmentName: position.department?.name ?? null,
     title: position.title,
     description: position.description,
+    color: position.color,
     isActive: position.isActive,
+    isArchived: position.deletedAt !== null,
     employeeCount: position._count.employees,
     createdAt: position.createdAt.toISOString(),
   };

@@ -37,6 +37,9 @@ export const PERMISSIONS = {
   ABSENCE_TYPE_READ: 'absence_type.read',
   ABSENCE_TYPE_UPDATE: 'absence_type.update',
   ABSENCE_TYPE_DELETE: 'absence_type.delete',
+
+  WORKING_TIME_READ: 'working_time.read',
+  WORKING_TIME_MANAGE: 'working_time.manage',
 } as const
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS]

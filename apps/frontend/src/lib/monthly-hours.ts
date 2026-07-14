@@ -1,5 +1,3 @@
-import { daysInMonth } from '@/pages/scheduler/schedule-grid.utils'
-import type { Employee, EmploymentType } from '@/types/employee.types'
 import type { ShiftTemplate } from '@/types/shift-template.types'
 
 function timeToMinutes(time: string): number {
@@ -16,29 +14,6 @@ export function calculateShiftDurationHours(
   const spanMinutes = end > start ? end - start : 24 * 60 - start + end
   const workedMinutes = Math.max(0, spanMinutes - template.breakMinutes)
   return workedMinutes / 60
-}
-
-/**
- * Standard weekly hours by employment type — the only input PAMAINA asks a
- * manager for, since it deliberately does not model contracts, weekly
- * hours, or FTE. This is a placeholder the future Lithuanian Calendar Engine
- * will replace with an exact working-day / public-holiday-aware
- * calculation. Every caller goes through calculateRequiredMonthlyHours, so
- * that swap is a one-file change instead of a scheduler-wide rewrite.
- */
-const STANDARD_WEEKLY_HOURS: Record<EmploymentType, number> = {
-  FULL_TIME: 40,
-  PART_TIME: 20,
-}
-
-export function calculateRequiredMonthlyHours(
-  employee: Pick<Employee, 'employmentType'>,
-  year: number,
-  month: number,
-): number {
-  const days = daysInMonth(year, month)
-  const weeklyHours = STANDARD_WEEKLY_HOURS[employee.employmentType]
-  return (weeklyHours * days) / 7
 }
 
 export type MonthlyHoursStatus = 'under' | 'exact' | 'over'

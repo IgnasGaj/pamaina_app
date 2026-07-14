@@ -23,7 +23,9 @@ const STATUS_BADGE_VARIANT: Record<EmployeeStatus, 'success' | 'warning' | 'seco
 
 const EMPLOYMENT_TYPE_LABELS: Record<EmploymentType, string> = {
   FULL_TIME: 'Full-time',
-  PART_TIME: 'Part-time',
+  PART_TIME_75: 'Part-time (75%)',
+  PART_TIME_50: 'Part-time (50%)',
+  PART_TIME_25: 'Part-time (25%)',
 }
 
 function formatDate(value: string | null): string {

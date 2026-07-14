@@ -40,15 +40,16 @@ model Company {
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
 
-  roles          Role[]
-  users          User[]
-  departments    Department[]
-  positions      Position[]
-  employees      Employee[]
-  schedules      Schedule[]
-  shiftTemplates ShiftTemplate[]
-  absenceTypes   AbsenceType[]
-  settings       CompanySettings?
+  roles                 Role[]
+  users                 User[]
+  departments           Department[]
+  positions             Position[]
+  employees             Employee[]
+  schedules             Schedule[]
+  shiftTemplates        ShiftTemplate[]
+  absenceTypes          AbsenceType[]
+  companyNonWorkingDays CompanyNonWorkingDay[]
+  settings              CompanySettings?
 
   @@index([isActive])
   @@map("companies")
@@ -284,13 +285,16 @@ enum EmployeeStatus {
   ARCHIVED
 }
 
-/// How much an employee is expected to work. Deliberately just two options —
-/// PAMAINA is scheduling software, not an HR/payroll system, so this only
-/// drives the placeholder monthly-required-hours calculation (see
-/// apps/frontend/src/lib/monthly-hours.ts), not contracts or payroll.
+/// How much of a full-time schedule an employee works. Feeds the Lithuanian
+/// Working Time Engine's monthly-required-hours calculation (see
+/// modules/working-time) as a multiplier against the standard monthly norm —
+/// PAMAINA is scheduling software, not an HR/payroll system, so this is
+/// deliberately a fixed set of fractions rather than a free-form FTE field.
 enum EmploymentType {
   FULL_TIME
-  PART_TIME
+  PART_TIME_75
+  PART_TIME_50
+  PART_TIME_25
 }
 
 /// Employees are the single source of truth for scheduling — no separate
@@ -350,7 +354,7 @@ model AbsenceType {
 
   name  String
   /// Hex color used for the cell background (e.g. "#F59E0B").
-  color String @default("#F59E0B")
+  color String  @default("#F59E0B")
   /// Whether this absence counts as paid time off.
   paid  Boolean @default(true)
 
@@ -476,4 +480,28 @@ model ScheduleAssignment {
   @@index([shiftTemplateId])
   @@index([absenceTypeId])
   @@map("schedule_assignments")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Lithuanian Working Time Engine — official public holidays are computed
+// in code (apps/backend/src/modules/working-time/lithuanian-holidays.ts),
+// not stored, since they're a pure function of the year. Only company-
+// specific additions (e.g. a local factory shutdown day) are persisted.
+// ─────────────────────────────────────────────────────────────────────────
+
+model CompanyNonWorkingDay {
+  id        String @id @default(uuid())
+  companyId String @map("company_id")
+
+  date DateTime @db.Date
+  name String
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, date])
+  @@index([companyId])
+  @@map("company_non_working_days")
 }

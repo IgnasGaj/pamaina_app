@@ -21,6 +21,7 @@ import scheduleRoutes from "@/modules/schedules/schedule.routes";
 import scheduleAssignmentRoutes from "@/modules/schedules/schedule-assignment.routes";
 import shiftTemplateRoutes from "@/modules/shift-templates/shift-template.routes";
 import absenceTypeRoutes from "@/modules/absence-types/absence-type.routes";
+import workingTimeRoutes from "@/modules/working-time/working-time.routes";
 
 export function createApp(): Express {
   const app = express();
@@ -58,6 +59,7 @@ export function createApp(): Express {
   api.use("/schedule-assignments", scheduleAssignmentRoutes);
   api.use("/shift-templates", shiftTemplateRoutes);
   api.use("/absence-types", absenceTypeRoutes);
+  api.use("/working-time", workingTimeRoutes);
 
   app.use(env.API_PREFIX, api);
 

@@ -6,6 +6,7 @@ import type { AbsenceType } from '@/types/absence-type.types'
 import type { Employee } from '@/types/employee.types'
 import type { ScheduleAssignment } from '@/types/schedule.types'
 import type { ShiftTemplate } from '@/types/shift-template.types'
+import type { MonthlyHoursBreakdown } from '@/types/working-time.types'
 
 function initials(firstName: string, lastName: string): string {
   return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase()
@@ -14,6 +15,30 @@ function initials(firstName: string, lastName: string): string {
 export interface EmployeeMonthlyHours {
   assigned: number
   required: number
+}
+
+/** Explains Required/Assigned/Remaining and which public holidays affected the calculation. */
+function buildHoursTooltip(hours: EmployeeMonthlyHours, breakdown: MonthlyHoursBreakdown | undefined): string {
+  const remaining = hours.required - hours.assigned
+  const lines = [
+    `Required hours: ${formatHours(hours.required)} h`,
+    `Assigned hours: ${formatHours(hours.assigned)} h`,
+    remaining >= 0 ? `Remaining: ${formatHours(remaining)} h` : `Over by: ${formatHours(-remaining)} h`,
+  ]
+
+  if (breakdown) {
+    if (breakdown.ruleReductionHours > 0) {
+      lines.push(`Includes a ${formatHours(breakdown.ruleReductionHours)} h pre-holiday shortened-day reduction.`)
+    }
+    if (breakdown.holidays.length > 0) {
+      lines.push('Public holidays this month:')
+      for (const holiday of breakdown.holidays) {
+        lines.push(`- ${holiday.date}: ${holiday.name}`)
+      }
+    }
+  }
+
+  return lines.join('\n')
 }
 
 export function EmployeeRow({
@@ -25,6 +50,7 @@ export function EmployeeRow({
   availableTemplates,
   availableAbsenceTypes,
   hours,
+  requiredBreakdown,
   disabled,
   onAction,
 }: {
@@ -36,6 +62,7 @@ export function EmployeeRow({
   availableTemplates: ShiftTemplate[]
   availableAbsenceTypes: AbsenceType[]
   hours: EmployeeMonthlyHours | undefined
+  requiredBreakdown: MonthlyHoursBreakdown | undefined
   disabled: boolean
   onAction: (params: CellActionParams) => void
 }) {
@@ -58,7 +85,10 @@ export function EmployeeRow({
           </div>
           <div className="shrink-0 text-right text-xs">
             {hours ? (
-              <span className={`font-medium tabular-nums ${MONTHLY_HOURS_STATUS_COLORS[hoursStatus!]}`}>
+              <span
+                className={`cursor-help font-medium tabular-nums ${MONTHLY_HOURS_STATUS_COLORS[hoursStatus!]}`}
+                title={buildHoursTooltip(hours, requiredBreakdown)}
+              >
                 {formatHours(hours.assigned)} / {formatHours(hours.required)} h
               </span>
             ) : (

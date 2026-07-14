@@ -1,5 +1,15 @@
 import type { LucideIcon } from 'lucide-react'
-import { Building2, CalendarRange, CalendarX, Clock, LayoutDashboard, Settings, UserCog, Users } from 'lucide-react'
+import {
+  Building2,
+  CalendarRange,
+  CalendarX,
+  Clock,
+  LayoutDashboard,
+  Settings,
+  Timer,
+  UserCog,
+  Users,
+} from 'lucide-react'
 
 import { PERMISSIONS, type PermissionKey, type SystemRoleKey } from '@/types/auth.types'
 
@@ -18,6 +28,12 @@ export const NAV_ITEMS: NavItem[] = [
   { to: '/scheduler', label: 'Scheduler', icon: CalendarRange, permission: PERMISSIONS.SCHEDULE_READ },
   { to: '/shift-templates', label: 'Shift templates', icon: Clock, permission: PERMISSIONS.SHIFT_TEMPLATE_READ },
   { to: '/absence-types', label: 'Absence types', icon: CalendarX, permission: PERMISSIONS.ABSENCE_TYPE_READ },
+  {
+    to: '/settings/working-time',
+    label: 'Working time',
+    icon: Timer,
+    permission: PERMISSIONS.WORKING_TIME_READ,
+  },
   {
     to: '/organization',
     label: 'Organization',

@@ -26,8 +26,9 @@ import {
   useUpdateAssignment,
 } from '@/hooks/useSchedules'
 import { useShiftTemplates } from '@/hooks/useShiftTemplates'
+import { useMonthlyHoursByEmploymentType } from '@/hooks/useWorkingTime'
 import { getErrorMessage } from '@/lib/errors'
-import { calculateRequiredMonthlyHours, calculateShiftDurationHours } from '@/lib/monthly-hours'
+import { calculateShiftDurationHours } from '@/lib/monthly-hours'
 import type { EmployeeMonthlyHours } from '@/pages/scheduler/EmployeeRow'
 import { ScheduleGrid } from '@/pages/scheduler/ScheduleGrid'
 import type { CellActionParams } from '@/pages/scheduler/ScheduleCell'
@@ -72,6 +73,10 @@ export function SchedulerPage() {
   const positionsQuery = usePositions({ pageSize: 100 })
   const shiftTemplatesQuery = useShiftTemplates({ pageSize: 100 })
   const absenceTypesQuery = useAbsenceTypes({ pageSize: 100 })
+  // The Scheduler never computes required hours itself — it asks the
+  // Lithuanian Working Time Engine once per employment type (max 4 calls)
+  // and maps each employee to their type's result. See useWorkingTime.ts.
+  const requiredHours = useMonthlyHoursByEmploymentType(year, month)
 
   const monthQuery = useSchedules({ year, month, pageSize: 1 })
   const scheduleSummary = monthQuery.data?.items[0]
@@ -207,7 +212,7 @@ export function SchedulerPage() {
         const template = assignment.shiftTemplateId ? shiftTemplatesById.get(assignment.shiftTemplateId) : undefined
         return template ? total + calculateShiftDurationHours(template) : total
       }, 0)
-      const required = calculateRequiredMonthlyHours(employee, year, month)
+      const required = requiredHours.byType.get(employee.employmentType)?.requiredHours ?? 0
       const roundedAssigned = Math.round(assigned * 100) / 100
       const roundedRequired = Math.round(required * 100) / 100
 
@@ -220,7 +225,7 @@ export function SchedulerPage() {
     }
     previousHoursRef.current = next
     return next
-  }, [rosterQuery.data, schedule, shiftTemplatesById, year, month])
+  }, [rosterQuery.data, schedule, shiftTemplatesById, requiredHours.byType])
 
   const filteredRoster = useMemo(() => {
     let list = rosterQuery.data ?? []
@@ -498,6 +503,7 @@ export function SchedulerPage() {
               availableTemplates={availableTemplates}
               availableAbsenceTypes={availableAbsenceTypes}
               hoursByEmployee={hoursByEmployee}
+              requiredHoursByEmploymentType={requiredHours.byType}
               disabled={!isEditable}
               onAction={handleCellAction}
             />

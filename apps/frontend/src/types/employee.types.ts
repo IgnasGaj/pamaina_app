@@ -1,8 +1,8 @@
 /** Record lifecycle status. ARCHIVED is the module's soft-delete state, only reachable via the archive endpoint. */
 export type EmployeeStatus = 'ACTIVE' | 'INACTIVE' | 'ARCHIVED'
 
-/** Drives the placeholder monthly-required-hours calculation — see lib/monthly-hours.ts. */
-export type EmploymentType = 'FULL_TIME' | 'PART_TIME'
+/** Multiplier fed into the Lithuanian Working Time Engine's monthly-required-hours calculation. */
+export type EmploymentType = 'FULL_TIME' | 'PART_TIME_75' | 'PART_TIME_50' | 'PART_TIME_25'
 
 export type EmployeeSortBy = 'name' | 'createdAt'
 

@@ -16,6 +16,7 @@ import { ShiftTemplatesPage } from '@/pages/shift-templates/ShiftTemplatesPage'
 import { AbsenceTypesPage } from '@/pages/absence-types/AbsenceTypesPage'
 import { UsersPage } from '@/pages/users/UsersPage'
 import { CompanySettingsPage } from '@/pages/settings/CompanySettingsPage'
+import { WorkingTimeSettingsPage } from '@/pages/settings/WorkingTimeSettingsPage'
 import { ForbiddenPage } from '@/pages/errors/ForbiddenPage'
 import { NotFoundPage } from '@/pages/errors/NotFoundPage'
 import { PERMISSIONS } from '@/types/auth.types'
@@ -63,6 +64,10 @@ export const router = createBrowserRouter([
               {
                 element: <RequirePermission anyOf={[PERMISSIONS.USER_READ]} />,
                 children: [{ path: 'users', element: <UsersPage /> }],
+              },
+              {
+                element: <RequirePermission anyOf={[PERMISSIONS.WORKING_TIME_READ]} />,
+                children: [{ path: 'settings/working-time', element: <WorkingTimeSettingsPage /> }],
               },
               { path: 'settings/company', element: <CompanySettingsPage /> },
             ],

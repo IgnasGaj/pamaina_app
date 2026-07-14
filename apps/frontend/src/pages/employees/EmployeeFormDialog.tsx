@@ -27,7 +27,9 @@ const NONE_VALUE = '__none__'
 const EDITABLE_STATUSES: Extract<EmployeeStatus, 'ACTIVE' | 'INACTIVE'>[] = ['ACTIVE', 'INACTIVE']
 const EMPLOYMENT_TYPE_OPTIONS: { value: EmploymentType; label: string }[] = [
   { value: 'FULL_TIME', label: 'Full-time' },
-  { value: 'PART_TIME', label: 'Part-time' },
+  { value: 'PART_TIME_75', label: 'Part-time (75%)' },
+  { value: 'PART_TIME_50', label: 'Part-time (50%)' },
+  { value: 'PART_TIME_25', label: 'Part-time (25%)' },
 ]
 
 function isValidDateString(value: string): boolean {
@@ -51,7 +53,7 @@ const employeeSchema = z
       .or(z.literal('')),
     departmentId: z.string(),
     positionId: z.string(),
-    employmentType: z.enum(['FULL_TIME', 'PART_TIME']),
+    employmentType: z.enum(['FULL_TIME', 'PART_TIME_75', 'PART_TIME_50', 'PART_TIME_25']),
     startDate: z.string().refine(isValidDateString, 'Enter a valid date'),
     endDate: z
       .string()

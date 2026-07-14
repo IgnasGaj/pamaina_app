@@ -1,9 +1,10 @@
 import { EmployeeRow, type EmployeeMonthlyHours } from '@/pages/scheduler/EmployeeRow'
 import type { CellActionParams } from '@/pages/scheduler/ScheduleCell'
 import type { AbsenceType } from '@/types/absence-type.types'
-import type { Employee } from '@/types/employee.types'
+import type { Employee, EmploymentType } from '@/types/employee.types'
 import type { ScheduleAssignment } from '@/types/schedule.types'
 import type { ShiftTemplate } from '@/types/shift-template.types'
+import type { MonthlyHoursBreakdown } from '@/types/working-time.types'
 
 export function ScheduleGrid({
   roster,
@@ -14,6 +15,7 @@ export function ScheduleGrid({
   availableTemplates,
   availableAbsenceTypes,
   hoursByEmployee,
+  requiredHoursByEmploymentType,
   disabled,
   onAction,
 }: {
@@ -25,6 +27,7 @@ export function ScheduleGrid({
   availableTemplates: ShiftTemplate[]
   availableAbsenceTypes: AbsenceType[]
   hoursByEmployee: Map<string, EmployeeMonthlyHours>
+  requiredHoursByEmploymentType: Map<EmploymentType, MonthlyHoursBreakdown>
   disabled: boolean
   onAction: (params: CellActionParams) => void
 }) {
@@ -58,6 +61,7 @@ export function ScheduleGrid({
               availableTemplates={availableTemplates}
               availableAbsenceTypes={availableAbsenceTypes}
               hours={hoursByEmployee.get(employee.id)}
+              requiredBreakdown={requiredHoursByEmploymentType.get(employee.employmentType)}
               disabled={disabled}
               onAction={onAction}
             />

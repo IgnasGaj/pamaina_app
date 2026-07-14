@@ -26,7 +26,12 @@ export async function getById(req: Request, res: Response): Promise<void> {
 
 export async function update(req: Request, res: Response): Promise<void> {
   const { id } = req.params as { id: string };
-  const schedule = await scheduleService.updateSchedule(req.user!.companyId!, id, req.body as UpdateScheduleDto);
+  const schedule = await scheduleService.updateSchedule(
+    req.user!.companyId!,
+    req.user!.id,
+    id,
+    req.body as UpdateScheduleDto,
+  );
   sendSuccess(res, schedule);
 }
 
@@ -38,18 +43,22 @@ export async function list(req: Request, res: Response): Promise<void> {
 
 export async function publish(req: Request, res: Response): Promise<void> {
   const { id } = req.params as { id: string };
-  const schedule = await scheduleService.publishSchedule(req.user!.companyId!, id);
+  const schedule = await scheduleService.publishSchedule(req.user!.companyId!, req.user!.id, id);
   sendSuccess(res, schedule);
 }
 
 export async function copyPrevious(req: Request, res: Response): Promise<void> {
   const { id } = req.params as { id: string };
-  const schedule = await scheduleService.copyPreviousMonth(req.user!.companyId!, id);
+  const schedule = await scheduleService.copyPreviousMonth(req.user!.companyId!, req.user!.id, id);
   sendSuccess(res, schedule);
 }
 
 export async function createAssignment(req: Request, res: Response): Promise<void> {
-  const assignment = await scheduleService.createAssignment(req.user!.companyId!, req.body as CreateAssignmentDto);
+  const assignment = await scheduleService.createAssignment(
+    req.user!.companyId!,
+    req.user!.id,
+    req.body as CreateAssignmentDto,
+  );
   sendSuccess(res, assignment, 201);
 }
 
@@ -57,6 +66,7 @@ export async function updateAssignment(req: Request, res: Response): Promise<voi
   const { id } = req.params as { id: string };
   const assignment = await scheduleService.updateAssignment(
     req.user!.companyId!,
+    req.user!.id,
     id,
     req.body as UpdateAssignmentDto,
   );
@@ -65,6 +75,6 @@ export async function updateAssignment(req: Request, res: Response): Promise<voi
 
 export async function deleteAssignment(req: Request, res: Response): Promise<void> {
   const { id } = req.params as { id: string };
-  await scheduleService.deleteAssignment(req.user!.companyId!, id);
+  await scheduleService.deleteAssignment(req.user!.companyId!, req.user!.id, id);
   sendSuccess(res, null);
 }

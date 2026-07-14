@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import { Building2, CalendarRange, FileText, LayoutDashboard, Settings, UserCog, Users } from 'lucide-react'
+import { Building2, CalendarRange, Clock, FileText, LayoutDashboard, Settings, UserCog, Users } from 'lucide-react'
 
 import { PERMISSIONS, type PermissionKey, type SystemRoleKey } from '@/types/auth.types'
 
@@ -17,6 +17,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: '/employees', label: 'Employees', icon: Users, permission: PERMISSIONS.EMPLOYEE_READ },
   { to: '/contracts', label: 'Contracts', icon: FileText, permission: PERMISSIONS.CONTRACT_READ },
   { to: '/scheduler', label: 'Scheduler', icon: CalendarRange, permission: PERMISSIONS.SCHEDULE_READ },
+  { to: '/shift-templates', label: 'Shift templates', icon: Clock, permission: PERMISSIONS.SHIFT_TEMPLATE_READ },
   {
     to: '/organization',
     label: 'Organization',

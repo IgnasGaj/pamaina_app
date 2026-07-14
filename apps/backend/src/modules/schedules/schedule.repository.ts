@@ -6,14 +6,21 @@ import { toPrismaSkipTake } from "@/shared/utils/pagination.util";
 type Client = PrismaClient | Prisma.TransactionClient;
 
 const scheduleListInclude = Prisma.validator<Prisma.ScheduleDefaultArgs>()({
-  include: { _count: { select: { assignments: true } } },
+  include: {
+    _count: { select: { assignments: true } },
+    updater: { select: { firstName: true, lastName: true } },
+  },
 });
 export type ScheduleListItem = Prisma.ScheduleGetPayload<typeof scheduleListInclude>;
 
 const scheduleDetailInclude = Prisma.validator<Prisma.ScheduleDefaultArgs>()({
   include: {
+    updater: { select: { firstName: true, lastName: true } },
     assignments: {
-      include: { employee: { select: { firstName: true, lastName: true } } },
+      include: {
+        employee: { select: { firstName: true, lastName: true } },
+        updater: { select: { firstName: true, lastName: true } },
+      },
       orderBy: [{ date: "asc" }],
     },
   },
@@ -85,6 +92,15 @@ export class ScheduleRepository {
       client.schedule.count({ where }),
     ]);
     return { items, total };
+  }
+
+  /** Lightweight touch used after an assignment mutation — bumps updatedBy/updatedAt without refetching the whole detail shape. */
+  async touchUpdatedBy(id: string, userId: string, client: Client = prisma): Promise<void> {
+    await client.schedule.update({
+      where: { id },
+      data: { updater: { connect: { id: userId } } },
+      select: { id: true },
+    });
   }
 }
 

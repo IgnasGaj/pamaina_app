@@ -14,6 +14,7 @@ import { EmployeeDetailsPage } from '@/pages/employees/EmployeeDetailsPage'
 import { ContractsPage } from '@/pages/contracts/ContractsPage'
 import { ContractDetailsPage } from '@/pages/contracts/ContractDetailsPage'
 import { SchedulerPage } from '@/pages/scheduler/SchedulerPage'
+import { ShiftTemplatesPage } from '@/pages/shift-templates/ShiftTemplatesPage'
 import { UsersPage } from '@/pages/users/UsersPage'
 import { CompanySettingsPage } from '@/pages/settings/CompanySettingsPage'
 import { ForbiddenPage } from '@/pages/errors/ForbiddenPage'
@@ -52,6 +53,10 @@ export const router = createBrowserRouter([
               {
                 element: <RequirePermission anyOf={[PERMISSIONS.SCHEDULE_READ]} />,
                 children: [{ path: 'scheduler', element: <SchedulerPage /> }],
+              },
+              {
+                element: <RequirePermission anyOf={[PERMISSIONS.SHIFT_TEMPLATE_READ]} />,
+                children: [{ path: 'shift-templates', element: <ShiftTemplatesPage /> }],
               },
               {
                 element: (

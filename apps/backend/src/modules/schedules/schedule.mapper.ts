@@ -6,7 +6,10 @@ function toDateOnly(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
-type AssignmentLike = ScheduleAssignment & { employee?: { firstName: string; lastName: string } };
+type AssignmentLike = ScheduleAssignment & {
+  employee?: { firstName: string; lastName: string };
+  updater?: { firstName: string; lastName: string } | null;
+};
 
 export function toAssignmentResponseDto(assignment: AssignmentLike): ScheduleAssignmentResponseDto {
   return {
@@ -16,8 +19,10 @@ export function toAssignmentResponseDto(assignment: AssignmentLike): ScheduleAss
     employeeName: assignment.employee ? `${assignment.employee.firstName} ${assignment.employee.lastName}` : "",
     contractId: assignment.contractId,
     date: toDateOnly(assignment.date),
-    shiftType: assignment.shiftType,
+    shiftTemplateId: assignment.shiftTemplateId,
     notes: assignment.notes,
+    updatedBy: assignment.updatedBy,
+    updatedByName: assignment.updater ? `${assignment.updater.firstName} ${assignment.updater.lastName}` : null,
     createdAt: assignment.createdAt.toISOString(),
     updatedAt: assignment.updatedAt.toISOString(),
   };
@@ -31,6 +36,8 @@ export function toScheduleResponseDto(schedule: ScheduleWithAssignments): Schedu
     month: schedule.month,
     status: schedule.status,
     createdBy: schedule.createdBy,
+    updatedBy: schedule.updatedBy,
+    updatedByName: schedule.updater ? `${schedule.updater.firstName} ${schedule.updater.lastName}` : null,
     publishedAt: schedule.publishedAt ? schedule.publishedAt.toISOString() : null,
     createdAt: schedule.createdAt.toISOString(),
     updatedAt: schedule.updatedAt.toISOString(),
@@ -46,6 +53,8 @@ export function toScheduleSummaryDto(schedule: ScheduleListItem): ScheduleSummar
     month: schedule.month,
     status: schedule.status,
     createdBy: schedule.createdBy,
+    updatedBy: schedule.updatedBy,
+    updatedByName: schedule.updater ? `${schedule.updater.firstName} ${schedule.updater.lastName}` : null,
     publishedAt: schedule.publishedAt ? schedule.publishedAt.toISOString() : null,
     createdAt: schedule.createdAt.toISOString(),
     updatedAt: schedule.updatedAt.toISOString(),

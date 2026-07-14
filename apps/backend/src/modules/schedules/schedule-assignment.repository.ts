@@ -12,6 +12,7 @@ const assignmentWithSchedule = Prisma.validator<Prisma.ScheduleAssignmentDefault
   include: {
     schedule: true,
     employee: { select: { firstName: true, lastName: true } },
+    updater: { select: { firstName: true, lastName: true } },
   },
 });
 export type AssignmentWithSchedule = Prisma.ScheduleAssignmentGetPayload<typeof assignmentWithSchedule>;

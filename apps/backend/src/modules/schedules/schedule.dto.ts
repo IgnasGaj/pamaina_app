@@ -1,9 +1,8 @@
 import { z } from "zod";
-import { ScheduleStatus, ShiftType } from "@prisma/client";
+import { ScheduleStatus } from "@prisma/client";
 import { paginationQuerySchema } from "@/shared/utils/pagination.util";
 
 export const scheduleStatusSchema = z.nativeEnum(ScheduleStatus);
-export const shiftTypeSchema = z.nativeEnum(ShiftType);
 
 export const createScheduleSchema = z.object({
   year: z.coerce.number().int().min(2000).max(2100),
@@ -33,18 +32,18 @@ export const createAssignmentSchema = z.object({
   employeeId: z.string().uuid(),
   contractId: z.string().uuid(),
   date: z.coerce.date(),
-  shiftType: shiftTypeSchema,
+  shiftTemplateId: z.string().uuid(),
   notes: z.string().max(500).optional(),
 });
 export type CreateAssignmentDto = z.infer<typeof createAssignmentSchema>;
 
 export const updateAssignmentSchema = z
   .object({
-    shiftType: shiftTypeSchema.optional(),
+    shiftTemplateId: z.string().uuid().optional(),
     notes: z.string().max(500).nullable().optional(),
   })
-  .refine((data) => data.shiftType !== undefined || data.notes !== undefined, {
-    message: "At least one field (shiftType or notes) must be provided",
+  .refine((data) => data.shiftTemplateId !== undefined || data.notes !== undefined, {
+    message: "At least one field (shiftTemplateId or notes) must be provided",
   });
 export type UpdateAssignmentDto = z.infer<typeof updateAssignmentSchema>;
 
@@ -59,8 +58,10 @@ export const scheduleAssignmentResponseSchema = z.object({
   employeeName: z.string(),
   contractId: z.string().uuid(),
   date: z.string(),
-  shiftType: shiftTypeSchema,
+  shiftTemplateId: z.string().uuid(),
   notes: z.string().nullable(),
+  updatedBy: z.string().uuid().nullable(),
+  updatedByName: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -73,6 +74,8 @@ const scheduleFieldsSchema = z.object({
   month: z.number().int(),
   status: scheduleStatusSchema,
   createdBy: z.string().uuid(),
+  updatedBy: z.string().uuid().nullable(),
+  updatedByName: z.string().nullable(),
   publishedAt: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),

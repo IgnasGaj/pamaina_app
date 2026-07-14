@@ -1,7 +1,5 @@
 export type ScheduleStatus = 'DRAFT' | 'PUBLISHED'
 
-export type ShiftType = 'MORNING' | 'AFTERNOON' | 'NIGHT' | 'DAY' | 'OFF' | 'VACATION' | 'SICK'
-
 export interface ScheduleAssignment {
   id: string
   scheduleId: string
@@ -9,8 +7,10 @@ export interface ScheduleAssignment {
   employeeName: string
   contractId: string
   date: string
-  shiftType: ShiftType
+  shiftTemplateId: string
   notes: string | null
+  updatedBy: string | null
+  updatedByName: string | null
   createdAt: string
   updatedAt: string
 }
@@ -22,6 +22,8 @@ export interface Schedule {
   month: number
   status: ScheduleStatus
   createdBy: string
+  updatedBy: string | null
+  updatedByName: string | null
   publishedAt: string | null
   createdAt: string
   updatedAt: string
@@ -35,6 +37,8 @@ export interface ScheduleSummary {
   month: number
   status: ScheduleStatus
   createdBy: string
+  updatedBy: string | null
+  updatedByName: string | null
   publishedAt: string | null
   createdAt: string
   updatedAt: string
@@ -64,11 +68,11 @@ export interface CreateAssignmentPayload {
   employeeId: string
   contractId: string
   date: string
-  shiftType: ShiftType
+  shiftTemplateId: string
   notes?: string
 }
 
 export interface UpdateAssignmentPayload {
-  shiftType?: ShiftType
+  shiftTemplateId?: string
   notes?: string | null
 }

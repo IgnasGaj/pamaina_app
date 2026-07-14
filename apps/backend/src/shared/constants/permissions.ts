@@ -37,6 +37,11 @@ export const PERMISSIONS = {
   SCHEDULE_CREATE: "schedule.create",
   SCHEDULE_READ: "schedule.read",
   SCHEDULE_UPDATE: "schedule.update",
+
+  SHIFT_TEMPLATE_CREATE: "shift_template.create",
+  SHIFT_TEMPLATE_READ: "shift_template.read",
+  SHIFT_TEMPLATE_UPDATE: "shift_template.update",
+  SHIFT_TEMPLATE_DELETE: "shift_template.delete",
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

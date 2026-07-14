@@ -1,8 +1,9 @@
-import { useCallback, useMemo, useState } from 'react'
-import { CalendarDays, ChevronLeft, ChevronRight, Copy, Loader2, Plus, RefreshCw } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { CalendarDays, ChevronLeft, ChevronRight, Copy, Loader2, Pencil, Plus, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { PageHeader } from '@/components/layout/PageHeader'
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -23,11 +24,15 @@ import {
   useSchedules,
   useUpdateAssignment,
 } from '@/hooks/useSchedules'
+import { useShiftTemplates } from '@/hooks/useShiftTemplates'
 import { getErrorMessage } from '@/lib/errors'
+import { calculateRequiredMonthlyHours, calculateShiftDurationHours } from '@/lib/monthly-hours'
+import type { EmployeeMonthlyHours } from '@/pages/scheduler/EmployeeRow'
 import { ScheduleGrid } from '@/pages/scheduler/ScheduleGrid'
 import type { CellActionParams } from '@/pages/scheduler/ScheduleCell'
 import { cellKey, dateKey, daysInMonth } from '@/pages/scheduler/schedule-grid.utils'
 import type { ScheduleAssignment } from '@/types/schedule.types'
+import type { ShiftTemplate } from '@/types/shift-template.types'
 
 const NONE_VALUE = '__all__'
 
@@ -57,10 +62,13 @@ export function SchedulerPage() {
   const [search, setSearch] = useState('')
   const [activeOnly, setActiveOnly] = useState(true)
   const [sortBy, setSortBy] = useState<SortBy>('name')
+  const [editingUnlocked, setEditingUnlocked] = useState(false)
+  const [confirmEditOpen, setConfirmEditOpen] = useState(false)
 
   const rosterQuery = useSchedulerRoster()
   const departmentsQuery = useDepartments({ pageSize: 100 })
   const positionsQuery = usePositions({ pageSize: 100 })
+  const shiftTemplatesQuery = useShiftTemplates({ pageSize: 100 })
 
   const monthQuery = useSchedules({ year, month, pageSize: 1 })
   const scheduleSummary = monthQuery.data?.items[0]
@@ -79,6 +87,13 @@ export function SchedulerPage() {
   const updateMutate = updateAssignment.mutate
   const deleteMutate = deleteAssignment.mutate
 
+  // A published schedule always re-opens locked — the confirmation dialog is
+  // a deliberate, per-visit safeguard against accidental edits, not a
+  // one-time unlock.
+  useEffect(() => {
+    setEditingUnlocked(false)
+  }, [scheduleId])
+
   // A single stable callback shared by every cell in the grid (up to ~9,300
   // of them) — depending only on the mutate functions themselves (which
   // React Query keeps referentially stable) rather than on the mutation
@@ -91,7 +106,7 @@ export function SchedulerPage() {
         toast.error(getErrorMessage(error))
       }
 
-      if (params.shiftType === null) {
+      if (params.shiftTemplateId === null) {
         if (params.assignmentId) {
           deleteMutate(params.assignmentId, { onError })
         }
@@ -99,7 +114,7 @@ export function SchedulerPage() {
       }
 
       if (params.assignmentId) {
-        updateMutate({ id: params.assignmentId, payload: { shiftType: params.shiftType } }, { onError })
+        updateMutate({ id: params.assignmentId, payload: { shiftTemplateId: params.shiftTemplateId } }, { onError })
       } else {
         createMutate(
           {
@@ -107,7 +122,7 @@ export function SchedulerPage() {
             employeeId: params.employeeId,
             contractId: params.contractId,
             date: params.date,
-            shiftType: params.shiftType,
+            shiftTemplateId: params.shiftTemplateId,
           },
           { onError },
         )
@@ -130,6 +145,60 @@ export function SchedulerPage() {
     }
     return map
   }, [schedule])
+
+  const shiftTemplatesById = useMemo(() => {
+    const map = new Map<string, ShiftTemplate>()
+    for (const template of shiftTemplatesQuery.data?.items ?? []) {
+      map.set(template.id, template)
+    }
+    return map
+  }, [shiftTemplatesQuery.data])
+
+  const availableTemplates = useMemo(
+    () => (shiftTemplatesQuery.data?.items ?? []).filter((template) => template.active),
+    [shiftTemplatesQuery.data],
+  )
+
+  // Structural memoization: only employees whose assigned/required numbers
+  // actually changed get a new result object. Combined with ScheduleCell's
+  // own memo, this is what keeps a single shift edit from re-rendering the
+  // other ~299 rows in a full roster.
+  const previousHoursRef = useRef<Map<string, EmployeeMonthlyHours>>(new Map())
+  const hoursByEmployee = useMemo(() => {
+    const next = new Map<string, EmployeeMonthlyHours>()
+    if (!schedule) {
+      previousHoursRef.current = next
+      return next
+    }
+
+    const assignmentsByEmployeeId = new Map<string, ScheduleAssignment[]>()
+    for (const assignment of schedule.assignments) {
+      const list = assignmentsByEmployeeId.get(assignment.employeeId)
+      if (list) list.push(assignment)
+      else assignmentsByEmployeeId.set(assignment.employeeId, [assignment])
+    }
+
+    for (const { employee, contract } of rosterQuery.data ?? []) {
+      if (!contract) continue
+      const employeeAssignments = assignmentsByEmployeeId.get(employee.id) ?? []
+      const assigned = employeeAssignments.reduce((total, assignment) => {
+        const template = shiftTemplatesById.get(assignment.shiftTemplateId)
+        return template ? total + calculateShiftDurationHours(template) : total
+      }, 0)
+      const required = calculateRequiredMonthlyHours(contract, year, month)
+      const roundedAssigned = Math.round(assigned * 100) / 100
+      const roundedRequired = Math.round(required * 100) / 100
+
+      const previous = previousHoursRef.current.get(employee.id)
+      if (previous && previous.assigned === roundedAssigned && previous.required === roundedRequired) {
+        next.set(employee.id, previous)
+      } else {
+        next.set(employee.id, { assigned: roundedAssigned, required: roundedRequired })
+      }
+    }
+    previousHoursRef.current = next
+    return next
+  }, [rosterQuery.data, schedule, shiftTemplatesById, year, month])
 
   const filteredRoster = useMemo(() => {
     let list = rosterQuery.data ?? []
@@ -187,7 +256,7 @@ export function SchedulerPage() {
   async function handlePublish() {
     try {
       await publishSchedule.mutateAsync()
-      toast.success('Schedule published — it is now read-only')
+      toast.success('Schedule published')
     } catch (error) {
       toast.error(getErrorMessage(error))
     }
@@ -213,7 +282,13 @@ export function SchedulerPage() {
     }
   }
 
+  function confirmEnableEditing() {
+    setEditingUnlocked(true)
+    setConfirmEditOpen(false)
+  }
+
   const isPublished = schedule?.status === 'PUBLISHED'
+  const isEditable = Boolean(schedule) && (!isPublished || editingUnlocked)
 
   return (
     <div>
@@ -224,6 +299,9 @@ export function SchedulerPage() {
           schedule && (
             <div className="flex items-center gap-2">
               <Badge variant={isPublished ? 'success' : 'secondary'}>{isPublished ? 'Published' : 'Draft'}</Badge>
+              {schedule.updatedByName && (
+                <span className="text-xs text-muted-foreground">Last updated by {schedule.updatedByName}</span>
+              )}
               {!isPublished && (
                 <>
                   <Button variant="outline" onClick={() => void handleCopyPrevious()} disabled={copyPreviousMonth.isPending}>
@@ -236,6 +314,23 @@ export function SchedulerPage() {
                   </Button>
                   <Button onClick={() => void handlePublish()} disabled={publishSchedule.isPending}>
                     {publishSchedule.isPending ? 'Publishing…' : 'Publish'}
+                  </Button>
+                </>
+              )}
+              {isPublished && !editingUnlocked && (
+                <Button variant="outline" onClick={() => setConfirmEditOpen(true)}>
+                  <Pencil />
+                  Edit
+                </Button>
+              )}
+              {isPublished && editingUnlocked && (
+                <>
+                  <Button variant="outline" onClick={() => void handleSave()} disabled={scheduleQuery.isFetching}>
+                    <RefreshCw />
+                    Save
+                  </Button>
+                  <Button variant="outline" onClick={() => setEditingUnlocked(false)}>
+                    Done editing
                   </Button>
                 </>
               )}
@@ -380,12 +475,24 @@ export function SchedulerPage() {
               roster={filteredRoster}
               days={days}
               assignmentsByKey={assignmentsByKey}
-              disabled={isPublished ?? false}
+              shiftTemplatesById={shiftTemplatesById}
+              availableTemplates={availableTemplates}
+              hoursByEmployee={hoursByEmployee}
+              disabled={!isEditable}
               onAction={handleCellAction}
             />
           )}
         </>
       )}
+
+      <ConfirmDialog
+        open={confirmEditOpen}
+        onOpenChange={setConfirmEditOpen}
+        title="Edit published schedule"
+        description="This schedule has already been published. You can still make changes — they save immediately and the schedule stays published. Continue?"
+        confirmLabel="Enable editing"
+        onConfirm={confirmEnableEditing}
+      />
     </div>
   )
 }

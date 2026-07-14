@@ -1,12 +1,19 @@
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { formatHours, getMonthlyHoursStatus, MONTHLY_HOURS_STATUS_COLORS } from '@/lib/monthly-hours'
 import { ScheduleCell, type CellActionParams } from '@/pages/scheduler/ScheduleCell'
 import { cellKey } from '@/pages/scheduler/schedule-grid.utils'
 import type { EmploymentContract } from '@/types/contract.types'
 import type { Employee } from '@/types/employee.types'
 import type { ScheduleAssignment } from '@/types/schedule.types'
+import type { ShiftTemplate } from '@/types/shift-template.types'
 
 function initials(firstName: string, lastName: string): string {
   return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase()
+}
+
+export interface EmployeeMonthlyHours {
+  assigned: number
+  required: number
 }
 
 export function EmployeeRow({
@@ -14,6 +21,9 @@ export function EmployeeRow({
   contract,
   days,
   assignmentsByKey,
+  shiftTemplatesById,
+  availableTemplates,
+  hours,
   disabled,
   onAction,
 }: {
@@ -21,10 +31,14 @@ export function EmployeeRow({
   contract: EmploymentContract | null
   days: string[]
   assignmentsByKey: Map<string, ScheduleAssignment>
+  shiftTemplatesById: Map<string, ShiftTemplate>
+  availableTemplates: ShiftTemplate[]
+  hours: EmployeeMonthlyHours | undefined
   disabled: boolean
   onAction: (params: CellActionParams) => void
 }) {
   const employeeName = `${employee.firstName} ${employee.lastName}`
+  const hoursStatus = hours ? getMonthlyHoursStatus(hours.assigned, hours.required) : undefined
 
   return (
     <tr className="border-b border-border">
@@ -39,26 +53,37 @@ export function EmployeeRow({
               {contract?.departmentName ?? '—'} · {contract?.positionTitle ?? '—'}
             </p>
           </div>
-          <div className="shrink-0 text-right text-xs text-muted-foreground">
-            {contract ? `${contract.weeklyHours}h/wk` : 'No contract'}
+          <div className="shrink-0 text-right text-xs">
+            {hours ? (
+              <span className={`font-medium tabular-nums ${MONTHLY_HOURS_STATUS_COLORS[hoursStatus!]}`}>
+                {formatHours(hours.assigned)} / {formatHours(hours.required)} h
+              </span>
+            ) : (
+              <span className="text-muted-foreground">No contract</span>
+            )}
           </div>
         </div>
       </td>
-      {days.map((date) => (
-        <td key={date} className="p-0.5 text-center">
-          <ScheduleCell
-            employeeId={employee.id}
-            contractId={contract?.id ?? null}
-            date={date}
-            assignment={assignmentsByKey.get(cellKey(employee.id, date))}
-            disabled={disabled}
-            employeeName={employeeName}
-            departmentName={contract?.departmentName ?? null}
-            positionTitle={contract?.positionTitle ?? null}
-            onAction={onAction}
-          />
-        </td>
-      ))}
+      {days.map((date) => {
+        const assignment = assignmentsByKey.get(cellKey(employee.id, date))
+        return (
+          <td key={date} className="p-0.5 text-center">
+            <ScheduleCell
+              employeeId={employee.id}
+              contractId={contract?.id ?? null}
+              date={date}
+              assignment={assignment}
+              shiftTemplate={assignment ? shiftTemplatesById.get(assignment.shiftTemplateId) : undefined}
+              availableTemplates={availableTemplates}
+              disabled={disabled}
+              employeeName={employeeName}
+              departmentName={contract?.departmentName ?? null}
+              positionTitle={contract?.positionTitle ?? null}
+              onAction={onAction}
+            />
+          </td>
+        )
+      })}
     </tr>
   )
 }

@@ -1,18 +1,25 @@
-import { EmployeeRow } from '@/pages/scheduler/EmployeeRow'
+import { EmployeeRow, type EmployeeMonthlyHours } from '@/pages/scheduler/EmployeeRow'
 import type { CellActionParams } from '@/pages/scheduler/ScheduleCell'
 import type { SchedulerEmployee } from '@/hooks/useSchedulerRoster'
 import type { ScheduleAssignment } from '@/types/schedule.types'
+import type { ShiftTemplate } from '@/types/shift-template.types'
 
 export function ScheduleGrid({
   roster,
   days,
   assignmentsByKey,
+  shiftTemplatesById,
+  availableTemplates,
+  hoursByEmployee,
   disabled,
   onAction,
 }: {
   roster: SchedulerEmployee[]
   days: string[]
   assignmentsByKey: Map<string, ScheduleAssignment>
+  shiftTemplatesById: Map<string, ShiftTemplate>
+  availableTemplates: ShiftTemplate[]
+  hoursByEmployee: Map<string, EmployeeMonthlyHours>
   disabled: boolean
   onAction: (params: CellActionParams) => void
 }) {
@@ -42,6 +49,9 @@ export function ScheduleGrid({
               contract={contract}
               days={days}
               assignmentsByKey={assignmentsByKey}
+              shiftTemplatesById={shiftTemplatesById}
+              availableTemplates={availableTemplates}
+              hours={hoursByEmployee.get(employee.id)}
               disabled={disabled || !contract}
               onAction={onAction}
             />

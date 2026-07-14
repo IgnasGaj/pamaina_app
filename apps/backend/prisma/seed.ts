@@ -31,6 +31,10 @@ const PERMISSION_DESCRIPTIONS: Record<string, string> = {
   "schedule.create": "Create monthly schedules",
   "schedule.read": "View monthly schedules",
   "schedule.update": "Edit, publish and copy monthly schedules",
+  "shift_template.create": "Create shift templates",
+  "shift_template.read": "View shift templates",
+  "shift_template.update": "Update shift templates",
+  "shift_template.delete": "Archive or restore shift templates",
 };
 
 async function seedPermissions(): Promise<void> {

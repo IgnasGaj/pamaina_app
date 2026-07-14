@@ -1,26 +1,30 @@
 import { memo, useState } from 'react'
 
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import type { AbsenceType } from '@/types/absence-type.types'
 import type { ScheduleAssignment } from '@/types/schedule.types'
 import type { ShiftTemplate } from '@/types/shift-template.types'
 
 export interface CellActionParams {
   employeeId: string
-  contractId: string
   date: string
   assignmentId?: string
   shiftTemplateId: string | null
+  absenceTypeId: string | null
 }
 
 interface ScheduleCellProps {
   employeeId: string
-  contractId: string | null
   date: string
   assignment: ScheduleAssignment | undefined
   /** The assignment's resolved shift template, or undefined if it has none/was archived and removed. */
   shiftTemplate: ShiftTemplate | undefined
-  /** Templates a manager may currently pick from — archived ones are excluded. */
+  /** The assignment's resolved absence type, or undefined if it has none/was archived and removed. */
+  absenceType: AbsenceType | undefined
+  /** Shift templates a manager may currently pick from — archived ones are excluded. */
   availableTemplates: ShiftTemplate[]
+  /** Absence types a manager may currently pick from — archived ones are excluded. */
+  availableAbsenceTypes: AbsenceType[]
   disabled: boolean
   employeeName: string
   departmentName: string | null
@@ -38,13 +42,19 @@ function getContrastTextColor(hexColor: string): string {
   return luminance > 0.6 ? '#111827' : '#ffffff'
 }
 
+/** Absence types have no dedicated short code — the first 3 letters of the name fit the compact grid cell. */
+function absenceShortLabel(name: string): string {
+  return name.slice(0, 3).toUpperCase()
+}
+
 function ScheduleCellComponent({
   employeeId,
-  contractId,
   date,
   assignment,
   shiftTemplate,
+  absenceType,
   availableTemplates,
+  availableAbsenceTypes,
   disabled,
   employeeName,
   departmentName,
@@ -52,25 +62,40 @@ function ScheduleCellComponent({
   onAction,
 }: ScheduleCellProps) {
   const [open, setOpen] = useState(false)
-  const isInteractive = !disabled && Boolean(contractId)
+  const isInteractive = !disabled
+
+  const entryLabel = shiftTemplate
+    ? `${shiftTemplate.name} (${shiftTemplate.startTime}-${shiftTemplate.endTime})`
+    : absenceType
+      ? `${absenceType.name} (${absenceType.paid ? 'Paid' : 'Unpaid'})`
+      : 'No shift'
 
   const tooltip = [
     employeeName,
     new Date(date).toLocaleDateString(),
-    shiftTemplate ? `${shiftTemplate.name} (${shiftTemplate.startTime}-${shiftTemplate.endTime})` : 'No shift',
+    entryLabel,
     departmentName ?? 'No department',
     positionTitle ?? 'No position',
   ].join(' • ')
 
-  function handleSelect(shiftTemplateId: string | null) {
-    if (!contractId) return
-    onAction({ employeeId, contractId, date, assignmentId: assignment?.id, shiftTemplateId })
+  function handleSelectShift(shiftTemplateId: string) {
+    onAction({ employeeId, date, assignmentId: assignment?.id, shiftTemplateId, absenceTypeId: null })
     setOpen(false)
   }
 
-  const cellStyle = shiftTemplate
-    ? { backgroundColor: shiftTemplate.color, color: getContrastTextColor(shiftTemplate.color) }
-    : undefined
+  function handleSelectAbsence(absenceTypeId: string) {
+    onAction({ employeeId, date, assignmentId: assignment?.id, shiftTemplateId: null, absenceTypeId })
+    setOpen(false)
+  }
+
+  function handleClear() {
+    onAction({ employeeId, date, assignmentId: assignment?.id, shiftTemplateId: null, absenceTypeId: null })
+    setOpen(false)
+  }
+
+  const color = shiftTemplate?.color ?? absenceType?.color
+  const cellStyle = color ? { backgroundColor: color, color: getContrastTextColor(color) } : undefined
+  const label = shiftTemplate ? shiftTemplate.shortCode : absenceType ? absenceShortLabel(absenceType.name) : ''
 
   const trigger = (
     <button
@@ -79,10 +104,10 @@ function ScheduleCellComponent({
       disabled={!isInteractive}
       style={cellStyle}
       className={`flex size-9 items-center justify-center rounded text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
-        shiftTemplate ? 'hover:brightness-95' : 'bg-transparent text-muted-foreground hover:bg-accent'
+        color ? 'hover:brightness-95' : 'bg-transparent text-muted-foreground hover:bg-accent'
       }`}
     >
-      {shiftTemplate ? shiftTemplate.shortCode : ''}
+      {label}
     </button>
   )
 
@@ -95,17 +120,21 @@ function ScheduleCellComponent({
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
       <PopoverContent className="w-56 p-1" align="center">
         <div className="flex flex-col">
-          {availableTemplates.length === 0 && (
+          {availableTemplates.length === 0 && availableAbsenceTypes.length === 0 && (
             <p className="px-2 py-1.5 text-sm text-muted-foreground">
-              No shift templates yet. Create one from the Shift templates page first.
+              No shift templates or absence types yet. Create one first.
             </p>
+          )}
+
+          {availableTemplates.length > 0 && (
+            <p className="px-2 pt-1 pb-0.5 text-xs font-medium text-muted-foreground">Shifts</p>
           )}
           {availableTemplates.map((template) => (
             <button
               key={template.id}
               type="button"
               className="flex items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent"
-              onClick={() => handleSelect(template.id)}
+              onClick={() => handleSelectShift(template.id)}
             >
               <span
                 className="inline-block size-3 shrink-0 rounded-sm"
@@ -118,11 +147,31 @@ function ScheduleCellComponent({
               </span>
             </button>
           ))}
+
+          {availableAbsenceTypes.length > 0 && (
+            <p className="px-2 pt-2 pb-0.5 text-xs font-medium text-muted-foreground">Absences</p>
+          )}
+          {availableAbsenceTypes.map((absence) => (
+            <button
+              key={absence.id}
+              type="button"
+              className="flex items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent"
+              onClick={() => handleSelectAbsence(absence.id)}
+            >
+              <span
+                className="inline-block size-3 shrink-0 rounded-sm"
+                style={{ backgroundColor: absence.color }}
+                aria-hidden
+              />
+              <span className="flex-1 truncate">{absence.name}</span>
+            </button>
+          ))}
+
           {assignment && (
             <button
               type="button"
               className="mt-1 rounded border-t border-border px-2 py-1.5 pt-2 text-left text-sm text-destructive hover:bg-accent"
-              onClick={() => handleSelect(null)}
+              onClick={handleClear}
             >
               Clear
             </button>

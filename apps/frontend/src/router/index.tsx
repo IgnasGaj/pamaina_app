@@ -11,10 +11,9 @@ import { DashboardPage } from '@/pages/DashboardPage'
 import { OrganizationPage } from '@/pages/organization/OrganizationPage'
 import { EmployeesPage } from '@/pages/employees/EmployeesPage'
 import { EmployeeDetailsPage } from '@/pages/employees/EmployeeDetailsPage'
-import { ContractsPage } from '@/pages/contracts/ContractsPage'
-import { ContractDetailsPage } from '@/pages/contracts/ContractDetailsPage'
 import { SchedulerPage } from '@/pages/scheduler/SchedulerPage'
 import { ShiftTemplatesPage } from '@/pages/shift-templates/ShiftTemplatesPage'
+import { AbsenceTypesPage } from '@/pages/absence-types/AbsenceTypesPage'
 import { UsersPage } from '@/pages/users/UsersPage'
 import { CompanySettingsPage } from '@/pages/settings/CompanySettingsPage'
 import { ForbiddenPage } from '@/pages/errors/ForbiddenPage'
@@ -44,19 +43,16 @@ export const router = createBrowserRouter([
                 ],
               },
               {
-                element: <RequirePermission anyOf={[PERMISSIONS.CONTRACT_READ]} />,
-                children: [
-                  { path: 'contracts', element: <ContractsPage /> },
-                  { path: 'contracts/:id', element: <ContractDetailsPage /> },
-                ],
-              },
-              {
                 element: <RequirePermission anyOf={[PERMISSIONS.SCHEDULE_READ]} />,
                 children: [{ path: 'scheduler', element: <SchedulerPage /> }],
               },
               {
                 element: <RequirePermission anyOf={[PERMISSIONS.SHIFT_TEMPLATE_READ]} />,
                 children: [{ path: 'shift-templates', element: <ShiftTemplatesPage /> }],
+              },
+              {
+                element: <RequirePermission anyOf={[PERMISSIONS.ABSENCE_TYPE_READ]} />,
+                children: [{ path: 'absence-types', element: <AbsenceTypesPage /> }],
               },
               {
                 element: (

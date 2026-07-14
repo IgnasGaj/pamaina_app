@@ -25,9 +25,6 @@ const PERMISSION_DESCRIPTIONS: Record<string, string> = {
   "employee.read": "View employee records",
   "employee.update": "Update employee records",
   "employee.delete": "Remove employee records",
-  "contract.create": "Create employment contracts",
-  "contract.read": "View employment contracts",
-  "contract.update": "Update or end employment contracts",
   "schedule.create": "Create monthly schedules",
   "schedule.read": "View monthly schedules",
   "schedule.update": "Edit, publish and copy monthly schedules",
@@ -35,6 +32,10 @@ const PERMISSION_DESCRIPTIONS: Record<string, string> = {
   "shift_template.read": "View shift templates",
   "shift_template.update": "Update shift templates",
   "shift_template.delete": "Archive or restore shift templates",
+  "absence_type.create": "Create absence types",
+  "absence_type.read": "View absence types",
+  "absence_type.update": "Update absence types",
+  "absence_type.delete": "Archive or restore absence types",
 };
 
 async function seedPermissions(): Promise<void> {

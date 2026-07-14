@@ -27,24 +27,41 @@ export const listSchedulesQuerySchema = paginationQuerySchema.extend({
 });
 export type ListSchedulesQuery = z.infer<typeof listSchedulesQuerySchema>;
 
-export const createAssignmentSchema = z.object({
-  scheduleId: z.string().uuid(),
-  employeeId: z.string().uuid(),
-  contractId: z.string().uuid(),
-  date: z.coerce.date(),
-  shiftTemplateId: z.string().uuid(),
-  notes: z.string().max(500).optional(),
-});
+/** Exactly one of shiftTemplateId/absenceTypeId must be set — never both, never neither. */
+const exactlyOneAssignmentKindRefinement = (
+  data: { shiftTemplateId?: string | null; absenceTypeId?: string | null },
+  ctx: z.RefinementCtx,
+): void => {
+  const hasShift = Boolean(data.shiftTemplateId);
+  const hasAbsence = Boolean(data.absenceTypeId);
+  if (hasShift === hasAbsence) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Provide exactly one of shiftTemplateId or absenceTypeId",
+      path: ["shiftTemplateId"],
+    });
+  }
+};
+
+export const createAssignmentSchema = z
+  .object({
+    scheduleId: z.string().uuid(),
+    employeeId: z.string().uuid(),
+    date: z.coerce.date(),
+    shiftTemplateId: z.string().uuid().optional(),
+    absenceTypeId: z.string().uuid().optional(),
+    notes: z.string().max(500).optional(),
+  })
+  .superRefine(exactlyOneAssignmentKindRefinement);
 export type CreateAssignmentDto = z.infer<typeof createAssignmentSchema>;
 
 export const updateAssignmentSchema = z
   .object({
-    shiftTemplateId: z.string().uuid().optional(),
+    shiftTemplateId: z.string().uuid().nullable(),
+    absenceTypeId: z.string().uuid().nullable(),
     notes: z.string().max(500).nullable().optional(),
   })
-  .refine((data) => data.shiftTemplateId !== undefined || data.notes !== undefined, {
-    message: "At least one field (shiftTemplateId or notes) must be provided",
-  });
+  .superRefine(exactlyOneAssignmentKindRefinement);
 export type UpdateAssignmentDto = z.infer<typeof updateAssignmentSchema>;
 
 export const assignmentIdParamsSchema = z.object({
@@ -56,9 +73,9 @@ export const scheduleAssignmentResponseSchema = z.object({
   scheduleId: z.string().uuid(),
   employeeId: z.string().uuid(),
   employeeName: z.string(),
-  contractId: z.string().uuid(),
   date: z.string(),
-  shiftTemplateId: z.string().uuid(),
+  shiftTemplateId: z.string().uuid().nullable(),
+  absenceTypeId: z.string().uuid().nullable(),
   notes: z.string().nullable(),
   updatedBy: z.string().uuid().nullable(),
   updatedByName: z.string().nullable(),

@@ -12,9 +12,9 @@ import {
   UpdateAssignmentDto,
   UpdateScheduleDto,
 } from "@/modules/schedules/schedule.dto";
-import { employeeRepository } from "@/modules/employees/employee.repository";
-import { contractRepository, ContractWithRelations } from "@/modules/contracts/contract.repository";
+import { employeeRepository, EmployeeWithRelations } from "@/modules/employees/employee.repository";
 import { shiftTemplateRepository } from "@/modules/shift-templates/shift-template.repository";
+import { absenceTypeRepository } from "@/modules/absence-types/absence-type.repository";
 import { BadRequestError, ConflictError, NotFoundError } from "@/shared/errors";
 import { PaginatedResult } from "@/shared/types/pagination.types";
 import { buildPaginatedResult } from "@/shared/utils/pagination.util";
@@ -36,30 +36,19 @@ function assertScheduleStructurallyEditable(schedule: { status: string }): void 
   }
 }
 
-async function assertEmployeeBelongsToCompany(employeeId: string, companyId: string): Promise<void> {
+/** Only ACTIVE employees currently within their employment window may receive shifts. */
+async function assertEmployeeSchedulable(
+  employeeId: string,
+  companyId: string,
+): Promise<EmployeeWithRelations> {
   const employee = await employeeRepository.findByIdInCompany(employeeId, companyId);
   if (!employee) {
     throw new BadRequestError("The selected employee does not belong to this company");
   }
-}
-
-/** Only ACTIVE contracts may receive shifts, and only for the employee they belong to. */
-async function assertActiveContractForEmployee(
-  contractId: string,
-  employeeId: string,
-  companyId: string,
-): Promise<ContractWithRelations> {
-  const contract = await contractRepository.findByIdInCompany(contractId, companyId);
-  if (!contract) {
-    throw new BadRequestError("The selected contract does not belong to this company");
+  if (employee.status !== "ACTIVE") {
+    throw new BadRequestError("Only active employees may receive shifts");
   }
-  if (contract.employeeId !== employeeId) {
-    throw new BadRequestError("The selected contract does not belong to this employee");
-  }
-  if (contract.status !== "ACTIVE") {
-    throw new BadRequestError("Only active contracts may receive shifts");
-  }
-  return contract;
+  return employee;
 }
 
 /** New/changed assignments may only pick a currently-active shift template (archived ones stay valid on already-existing assignments). */
@@ -73,12 +62,23 @@ async function assertActiveShiftTemplate(shiftTemplateId: string, companyId: str
   }
 }
 
-function assertDateWithinContract(date: Date, contract: { startDate: Date; endDate: Date | null }): void {
-  if (date < contract.startDate) {
-    throw new BadRequestError("Cannot assign a shift before the contract's start date");
+/** New/changed assignments may only pick a currently-active absence type (archived ones stay valid on already-existing assignments). */
+async function assertActiveAbsenceType(absenceTypeId: string, companyId: string): Promise<void> {
+  const absenceType = await absenceTypeRepository.findByIdInCompany(absenceTypeId, companyId);
+  if (!absenceType) {
+    throw new BadRequestError("The selected absence type does not belong to this company");
   }
-  if (contract.endDate && date > contract.endDate) {
-    throw new BadRequestError("Cannot assign a shift after the contract's end date");
+  if (!absenceType.active) {
+    throw new BadRequestError("This absence type has been archived and can no longer be assigned");
+  }
+}
+
+function assertDateWithinEmployment(date: Date, employee: { startDate: Date; endDate: Date | null }): void {
+  if (date < employee.startDate) {
+    throw new BadRequestError("Cannot assign a shift before the employee's start date");
+  }
+  if (employee.endDate && date > employee.endDate) {
+    throw new BadRequestError("Cannot assign a shift after the employee's end date");
   }
 }
 
@@ -173,8 +173,8 @@ export async function publishSchedule(companyId: string, userId: string, id: str
 
 /**
  * Copies the previous calendar month's assignments into this schedule. Only
- * employees who currently hold an ACTIVE contract are copied — someone whose
- * contract has since ended shouldn't reappear on a new month's grid.
+ * employees who are currently ACTIVE are copied — someone whose employment
+ * has since ended shouldn't reappear on a new month's grid.
  * Existing assignments in the target month are left untouched
  * (skip-on-conflict), so re-running this after manual edits is always safe.
  */
@@ -196,26 +196,26 @@ export async function copyPreviousMonth(
     return toScheduleResponseDto(target);
   }
 
-  const activeContracts = await contractRepository.findAllActiveForCompany(companyId);
-  const activeContractByEmployee = new Map(activeContracts.map((contract) => [contract.employeeId, contract]));
+  const activeEmployees = await employeeRepository.findAllActiveForCompany(companyId);
+  const activeEmployeeById = new Map(activeEmployees.map((employee) => [employee.id, employee]));
   const targetDaysInMonth = daysInMonth(target.year, target.month);
 
   const toCreate: Prisma.ScheduleAssignmentCreateManyInput[] = [];
   for (const assignment of previous.assignments) {
-    const contract = activeContractByEmployee.get(assignment.employeeId);
-    if (!contract) continue; // no longer has an active contract
+    const employee = activeEmployeeById.get(assignment.employeeId);
+    if (!employee) continue; // no longer active
 
     const dayOfMonth = assignment.date.getUTCDate();
     if (dayOfMonth > targetDaysInMonth) continue; // e.g. day 31 has no equivalent in a 30-day month
 
     const newDate = new Date(Date.UTC(target.year, target.month - 1, dayOfMonth));
-    if (newDate < contract.startDate || (contract.endDate && newDate > contract.endDate)) continue;
+    if (newDate < employee.startDate || (employee.endDate && newDate > employee.endDate)) continue;
 
     toCreate.push({
       scheduleId: target.id,
       employeeId: assignment.employeeId,
-      contractId: contract.id,
       shiftTemplateId: assignment.shiftTemplateId,
+      absenceTypeId: assignment.absenceTypeId,
       date: newDate,
       notes: assignment.notes,
       updatedBy: userId,
@@ -242,10 +242,14 @@ export async function createAssignment(
   // managers must never be forced to create a new schedule just to fix a
   // shift. The frontend gates this behind an explicit "Edit" confirmation.
 
-  await assertEmployeeBelongsToCompany(dto.employeeId, companyId);
-  const contract = await assertActiveContractForEmployee(dto.contractId, dto.employeeId, companyId);
-  await assertActiveShiftTemplate(dto.shiftTemplateId, companyId);
-  assertDateWithinContract(dto.date, contract);
+  const employee = await assertEmployeeSchedulable(dto.employeeId, companyId);
+  if (dto.shiftTemplateId) {
+    await assertActiveShiftTemplate(dto.shiftTemplateId, companyId);
+  }
+  if (dto.absenceTypeId) {
+    await assertActiveAbsenceType(dto.absenceTypeId, companyId);
+  }
+  assertDateWithinEmployment(dto.date, employee);
   assertDateWithinSchedule(dto.date, schedule);
 
   const existing = await scheduleAssignmentRepository.findByScheduleEmployeeDate(
@@ -260,8 +264,8 @@ export async function createAssignment(
   const created = await scheduleAssignmentRepository.create({
     scheduleId: dto.scheduleId,
     employeeId: dto.employeeId,
-    contractId: dto.contractId,
     shiftTemplateId: dto.shiftTemplateId,
+    absenceTypeId: dto.absenceTypeId,
     date: dto.date,
     notes: dto.notes,
     updatedBy: userId,
@@ -284,9 +288,13 @@ export async function updateAssignment(
   if (dto.shiftTemplateId) {
     await assertActiveShiftTemplate(dto.shiftTemplateId, companyId);
   }
+  if (dto.absenceTypeId) {
+    await assertActiveAbsenceType(dto.absenceTypeId, companyId);
+  }
 
   const updated = await scheduleAssignmentRepository.update(id, {
-    ...(dto.shiftTemplateId !== undefined ? { shiftTemplate: { connect: { id: dto.shiftTemplateId } } } : {}),
+    shiftTemplate: dto.shiftTemplateId ? { connect: { id: dto.shiftTemplateId } } : { disconnect: true },
+    absenceType: dto.absenceTypeId ? { connect: { id: dto.absenceTypeId } } : { disconnect: true },
     notes: dto.notes,
     updater: { connect: { id: userId } },
   });

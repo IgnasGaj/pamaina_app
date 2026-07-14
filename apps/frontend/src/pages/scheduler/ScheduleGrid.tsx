@@ -1,6 +1,7 @@
 import { EmployeeRow, type EmployeeMonthlyHours } from '@/pages/scheduler/EmployeeRow'
 import type { CellActionParams } from '@/pages/scheduler/ScheduleCell'
-import type { SchedulerEmployee } from '@/hooks/useSchedulerRoster'
+import type { AbsenceType } from '@/types/absence-type.types'
+import type { Employee } from '@/types/employee.types'
 import type { ScheduleAssignment } from '@/types/schedule.types'
 import type { ShiftTemplate } from '@/types/shift-template.types'
 
@@ -9,16 +10,20 @@ export function ScheduleGrid({
   days,
   assignmentsByKey,
   shiftTemplatesById,
+  absenceTypesById,
   availableTemplates,
+  availableAbsenceTypes,
   hoursByEmployee,
   disabled,
   onAction,
 }: {
-  roster: SchedulerEmployee[]
+  roster: Employee[]
   days: string[]
   assignmentsByKey: Map<string, ScheduleAssignment>
   shiftTemplatesById: Map<string, ShiftTemplate>
+  absenceTypesById: Map<string, AbsenceType>
   availableTemplates: ShiftTemplate[]
+  availableAbsenceTypes: AbsenceType[]
   hoursByEmployee: Map<string, EmployeeMonthlyHours>
   disabled: boolean
   onAction: (params: CellActionParams) => void
@@ -42,17 +47,18 @@ export function ScheduleGrid({
           </tr>
         </thead>
         <tbody>
-          {roster.map(({ employee, contract }) => (
+          {roster.map((employee) => (
             <EmployeeRow
               key={employee.id}
               employee={employee}
-              contract={contract}
               days={days}
               assignmentsByKey={assignmentsByKey}
               shiftTemplatesById={shiftTemplatesById}
+              absenceTypesById={absenceTypesById}
               availableTemplates={availableTemplates}
+              availableAbsenceTypes={availableAbsenceTypes}
               hours={hoursByEmployee.get(employee.id)}
-              disabled={disabled || !contract}
+              disabled={disabled}
               onAction={onAction}
             />
           ))}

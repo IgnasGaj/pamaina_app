@@ -7,7 +7,9 @@ import {
   ListEmployeesQuery,
   UpdateEmployeeDto,
 } from "@/modules/employees/employee.dto";
-import { ConflictError, NotFoundError } from "@/shared/errors";
+import { departmentRepository } from "@/modules/departments/department.repository";
+import { positionRepository } from "@/modules/positions/position.repository";
+import { BadRequestError, ConflictError, NotFoundError } from "@/shared/errors";
 import { PaginatedResult } from "@/shared/types/pagination.types";
 import { buildPaginatedResult } from "@/shared/utils/pagination.util";
 
@@ -18,15 +20,40 @@ async function generateEmployeeCode(companyId: string): Promise<string> {
   return `EMP-${String(count + 1).padStart(4, "0")}`;
 }
 
+async function assertDepartmentBelongsToCompany(departmentId: string, companyId: string): Promise<void> {
+  const department = await departmentRepository.findByIdInCompany(departmentId, companyId);
+  if (!department) {
+    throw new BadRequestError("The selected department does not belong to this company");
+  }
+}
+
+async function assertPositionBelongsToCompany(positionId: string, companyId: string): Promise<void> {
+  const position = await positionRepository.findByIdInCompany(positionId, companyId);
+  if (!position) {
+    throw new BadRequestError("The selected position does not belong to this company");
+  }
+}
+
 export async function createEmployee(companyId: string, dto: CreateEmployeeDto): Promise<EmployeeResponseDto> {
+  if (dto.departmentId) {
+    await assertDepartmentBelongsToCompany(dto.departmentId, companyId);
+  }
+  if (dto.positionId) {
+    await assertPositionBelongsToCompany(dto.positionId, companyId);
+  }
+
   const baseData = {
     companyId,
     firstName: dto.firstName,
     lastName: dto.lastName,
     email: dto.email,
     phone: dto.phone,
-    personalCode: dto.personalCode,
-    birthDate: dto.birthDate,
+    departmentId: dto.departmentId,
+    positionId: dto.positionId,
+    employmentType: dto.employmentType,
+    startDate: dto.startDate,
+    endDate: dto.endDate,
+    notes: dto.notes,
   };
 
   if (dto.employeeCode) {
@@ -82,14 +109,29 @@ export async function updateEmployee(
     throw new NotFoundError("Employee");
   }
 
+  if (dto.departmentId) {
+    await assertDepartmentBelongsToCompany(dto.departmentId, companyId);
+  }
+  if (dto.positionId) {
+    await assertPositionBelongsToCompany(dto.positionId, companyId);
+  }
+
   const updated = await employeeRepository.update(id, {
     firstName: dto.firstName,
     lastName: dto.lastName,
     email: dto.email,
     phone: dto.phone,
-    personalCode: dto.personalCode,
-    birthDate: dto.birthDate,
+    employmentType: dto.employmentType,
+    startDate: dto.startDate,
+    endDate: dto.endDate,
+    notes: dto.notes,
     status: dto.status,
+    ...(dto.departmentId !== undefined
+      ? { department: dto.departmentId ? { connect: { id: dto.departmentId } } : { disconnect: true } }
+      : {}),
+    ...(dto.positionId !== undefined
+      ? { position: dto.positionId ? { connect: { id: dto.positionId } } : { disconnect: true } }
+      : {}),
   });
 
   return toEmployeeResponseDto(updated);
@@ -105,6 +147,8 @@ export async function listEmployees(
       companyId,
       search: query.search,
       status: query.status,
+      departmentId: query.departmentId,
+      positionId: query.positionId,
       sortBy: query.sortBy,
       sortOrder: query.sortOrder,
       restrictToUserId,

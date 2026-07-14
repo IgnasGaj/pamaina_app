@@ -17,10 +17,10 @@ import roleRoutes from "@/modules/roles/role.routes";
 import departmentRoutes from "@/modules/departments/department.routes";
 import positionRoutes from "@/modules/positions/position.routes";
 import employeeRoutes from "@/modules/employees/employee.routes";
-import contractRoutes from "@/modules/contracts/contract.routes";
 import scheduleRoutes from "@/modules/schedules/schedule.routes";
 import scheduleAssignmentRoutes from "@/modules/schedules/schedule-assignment.routes";
 import shiftTemplateRoutes from "@/modules/shift-templates/shift-template.routes";
+import absenceTypeRoutes from "@/modules/absence-types/absence-type.routes";
 
 export function createApp(): Express {
   const app = express();
@@ -54,10 +54,10 @@ export function createApp(): Express {
   api.use("/departments", departmentRoutes);
   api.use("/positions", positionRoutes);
   api.use("/employees", employeeRoutes);
-  api.use("/contracts", contractRoutes);
   api.use("/schedules", scheduleRoutes);
   api.use("/schedule-assignments", scheduleAssignmentRoutes);
   api.use("/shift-templates", shiftTemplateRoutes);
+  api.use("/absence-types", absenceTypeRoutes);
 
   app.use(env.API_PREFIX, api);
 

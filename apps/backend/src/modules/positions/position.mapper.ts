@@ -12,7 +12,7 @@ export function toPositionResponseDto(position: PositionWithRelations): Position
     color: position.color,
     isActive: position.isActive,
     isArchived: position.deletedAt !== null,
-    employeeCount: position._count.employmentContracts,
+    employeeCount: position._count.employees,
     createdAt: position.createdAt.toISOString(),
   };
 }

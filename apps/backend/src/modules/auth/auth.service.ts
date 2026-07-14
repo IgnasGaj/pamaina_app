@@ -13,6 +13,7 @@ import { companySettingsRepository } from "@/modules/companies/company-settings.
 import { ensureSystemRolesForCompany } from "@/modules/roles/role.service";
 import { departmentRepository } from "@/modules/departments/department.repository";
 import { positionRepository } from "@/modules/positions/position.repository";
+import { ensureDefaultAbsenceTypesForCompany } from "@/modules/absence-types/absence-type.service";
 import { hashPassword, verifyPassword } from "@/shared/utils/password.util";
 import {
   getTokenExpiry,
@@ -100,6 +101,7 @@ export async function registerCompany(dto: RegisterCompanyDto, ctx: RequestConte
       tx,
     );
     await companySettingsRepository.create({ companyId: company.id }, tx);
+    await ensureDefaultAbsenceTypesForCompany(company.id, tx);
 
     const createdUser = await authRepository.createUser(
       {

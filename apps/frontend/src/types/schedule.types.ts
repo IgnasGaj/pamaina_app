@@ -1,13 +1,14 @@
 export type ScheduleStatus = 'DRAFT' | 'PUBLISHED'
 
+/** Exactly one of shiftTemplateId/absenceTypeId is set — never both, never neither. */
 export interface ScheduleAssignment {
   id: string
   scheduleId: string
   employeeId: string
   employeeName: string
-  contractId: string
   date: string
-  shiftTemplateId: string
+  shiftTemplateId: string | null
+  absenceTypeId: string | null
   notes: string | null
   updatedBy: string | null
   updatedByName: string | null
@@ -66,13 +67,14 @@ export interface ListSchedulesQuery {
 export interface CreateAssignmentPayload {
   scheduleId: string
   employeeId: string
-  contractId: string
   date: string
-  shiftTemplateId: string
+  shiftTemplateId?: string
+  absenceTypeId?: string
   notes?: string
 }
 
 export interface UpdateAssignmentPayload {
-  shiftTemplateId?: string
+  shiftTemplateId: string | null
+  absenceTypeId: string | null
   notes?: string | null
 }

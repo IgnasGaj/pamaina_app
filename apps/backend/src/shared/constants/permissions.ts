@@ -30,10 +30,6 @@ export const PERMISSIONS = {
   EMPLOYEE_UPDATE: "employee.update",
   EMPLOYEE_DELETE: "employee.delete",
 
-  CONTRACT_CREATE: "contract.create",
-  CONTRACT_READ: "contract.read",
-  CONTRACT_UPDATE: "contract.update",
-
   SCHEDULE_CREATE: "schedule.create",
   SCHEDULE_READ: "schedule.read",
   SCHEDULE_UPDATE: "schedule.update",
@@ -42,6 +38,11 @@ export const PERMISSIONS = {
   SHIFT_TEMPLATE_READ: "shift_template.read",
   SHIFT_TEMPLATE_UPDATE: "shift_template.update",
   SHIFT_TEMPLATE_DELETE: "shift_template.delete",
+
+  ABSENCE_TYPE_CREATE: "absence_type.create",
+  ABSENCE_TYPE_READ: "absence_type.read",
+  ABSENCE_TYPE_UPDATE: "absence_type.update",
+  ABSENCE_TYPE_DELETE: "absence_type.delete",
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

@@ -138,7 +138,7 @@ export function EmployeesPage() {
               <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 className="pl-9"
-                placeholder="Search by name, email, phone, personal code…"
+                placeholder="Search by name, email, phone…"
                 value={search}
                 onChange={(e) => {
                   setSearch(e.target.value)
@@ -186,7 +186,8 @@ export function EmployeesPage() {
               <TableRow>
                 <TableHead>Code</TableHead>
                 <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
+                <TableHead>Department</TableHead>
+                <TableHead>Position</TableHead>
                 <TableHead>Status</TableHead>
                 {(canUpdate || canDelete) && <TableHead className="w-10" />}
               </TableRow>
@@ -194,7 +195,7 @@ export function EmployeesPage() {
             <TableBody>
               {employeesQuery.isLoading && (
                 <TableRow>
-                  <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
                     <div className="flex items-center justify-center gap-2">
                       <Loader2 className="size-4 animate-spin" />
                       Loading employees…
@@ -205,7 +206,7 @@ export function EmployeesPage() {
 
               {employeesQuery.isError && (
                 <TableRow>
-                  <TableCell colSpan={5} className="py-8 text-center">
+                  <TableCell colSpan={6} className="py-8 text-center">
                     <p className="text-sm text-destructive">{getErrorMessage(employeesQuery.error)}</p>
                     <Button
                       variant="outline"
@@ -221,7 +222,7 @@ export function EmployeesPage() {
 
               {!employeesQuery.isLoading && !employeesQuery.isError && employees.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
                     {search || statusFilter !== NONE_VALUE
                       ? 'No employees match your filters.'
                       : 'No employees yet. Add your first employee to get started.'}
@@ -239,7 +240,8 @@ export function EmployeesPage() {
                         {employee.firstName} {employee.lastName}
                       </Link>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{employee.email ?? '—'}</TableCell>
+                    <TableCell className="text-muted-foreground">{employee.departmentName ?? '—'}</TableCell>
+                    <TableCell className="text-muted-foreground">{employee.positionTitle ?? '—'}</TableCell>
                     <TableCell>
                       <Badge variant={STATUS_BADGE_VARIANT[employee.status]}>
                         {employee.status.charAt(0) + employee.status.slice(1).toLowerCase()}

@@ -71,7 +71,7 @@ export async function archiveDepartment(companyId: string, id: string): Promise<
   if (!existing) {
     throw new NotFoundError("Department");
   }
-  if (existing._count.employmentContracts > 0) {
+  if (existing._count.employees > 0) {
     throw new ConflictError(
       `Cannot archive "${existing.name}" while it has active employees assigned. Reassign or archive them first.`,
     );

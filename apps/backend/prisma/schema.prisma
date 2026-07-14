@@ -40,15 +40,15 @@ model Company {
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
 
-  roles               Role[]
-  users               User[]
-  departments         Department[]
-  positions           Position[]
-  employees           Employee[]
-  employmentContracts EmploymentContract[]
-  schedules           Schedule[]
-  shiftTemplates      ShiftTemplate[]
-  settings            CompanySettings?
+  roles          Role[]
+  users          User[]
+  departments    Department[]
+  positions      Position[]
+  employees      Employee[]
+  schedules      Schedule[]
+  shiftTemplates ShiftTemplate[]
+  absenceTypes   AbsenceType[]
+  settings       CompanySettings?
 
   @@index([isActive])
   @@map("companies")
@@ -238,9 +238,9 @@ model Department {
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
 
-  company             Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  positions           Position[]
-  employmentContracts EmploymentContract[]
+  company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  positions Position[]
+  employees Employee[]
 
   @@unique([companyId, name])
   @@index([companyId])
@@ -260,9 +260,9 @@ model Position {
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
-  company             Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  department          Department?          @relation(fields: [departmentId], references: [id], onDelete: SetNull)
-  employmentContracts EmploymentContract[]
+  company    Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  department Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  employees  Employee[]
 
   @@unique([companyId, title])
   @@index([companyId])
@@ -284,11 +284,18 @@ enum EmployeeStatus {
   ARCHIVED
 }
 
-/// Employees represent PEOPLE. All employment-specific information (which
-/// department/position, hours, contract dates, ...) lives on
-/// EmploymentContract instead, since a person can have multiple contracts
-/// over time and scheduling/vacations must key off the contract, not the
-/// person record.
+/// How much an employee is expected to work. Deliberately just two options —
+/// PAMAINA is scheduling software, not an HR/payroll system, so this only
+/// drives the placeholder monthly-required-hours calculation (see
+/// apps/frontend/src/lib/monthly-hours.ts), not contracts or payroll.
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+}
+
+/// Employees are the single source of truth for scheduling — no separate
+/// Employment Contract entity. Department/position/employment type live
+/// directly on the employee record.
 model Employee {
   id        String  @id @default(uuid())
   companyId String  @map("company_id")
@@ -297,14 +304,18 @@ model Employee {
   userId    String? @unique @map("user_id")
 
   /// Company-scoped personnel number (e.g. "EMP-0042").
-  employeeCode String    @map("employee_code")
-  firstName    String    @map("first_name")
-  lastName     String    @map("last_name")
-  email        String?
-  phone        String?
-  /// National personal identification code (e.g. Lithuanian asmens kodas).
-  personalCode String?   @map("personal_code")
-  birthDate    DateTime? @map("birth_date") @db.Date
+  employeeCode   String         @map("employee_code")
+  firstName      String         @map("first_name")
+  lastName       String         @map("last_name")
+  email          String?
+  phone          String?
+  departmentId   String?        @map("department_id")
+  positionId     String?        @map("position_id")
+  employmentType EmploymentType @default(FULL_TIME) @map("employment_type")
+
+  startDate DateTime  @map("start_date") @db.Date
+  endDate   DateTime? @map("end_date") @db.Date
+  notes     String?
 
   /// Record lifecycle: ACTIVE/INACTIVE are editable directly; ARCHIVED is
   /// only set by the archive endpoint, in lockstep with deletedAt/isActive.
@@ -316,90 +327,44 @@ model Employee {
 
   company             Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
   user                User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
-  employmentContracts EmploymentContract[]
+  department          Department?          @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  position            Position?            @relation(fields: [positionId], references: [id], onDelete: SetNull)
   scheduleAssignments ScheduleAssignment[]
 
   @@unique([companyId, employeeCode])
   @@index([companyId])
   @@index([companyId, status])
+  @@index([departmentId])
+  @@index([positionId])
   @@map("employees")
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Employment contracts — the single source of truth for scheduling,
-// vacation calculations, monthly required hours, and (future) payroll.
+// Absence types — company-defined non-working entries (vacation, sick
+// leave, ...). Mutually exclusive with ShiftTemplate on a ScheduleAssignment.
 // ─────────────────────────────────────────────────────────────────────────
 
-enum ContractStatus {
-  ACTIVE
-  ENDED
-  SUSPENDED
-  DRAFT
-}
+model AbsenceType {
+  id        String @id @default(uuid())
+  companyId String @map("company_id")
 
-enum ContractType {
-  PERMANENT
-  FIXED_TERM
-  SEASONAL
-  TEMPORARY
-  INTERNSHIP
-}
+  name  String
+  /// Hex color used for the cell background (e.g. "#F59E0B").
+  color String @default("#F59E0B")
+  /// Whether this absence counts as paid time off.
+  paid  Boolean @default(true)
 
-enum WorkWeek {
-  FIVE_DAY
-  SIX_DAY
-  CUSTOM
-}
-
-model EmploymentContract {
-  id           String  @id @default(uuid())
-  companyId    String  @map("company_id")
-  employeeId   String  @map("employee_id")
-  departmentId String? @map("department_id")
-  positionId   String? @map("position_id")
-
-  /// Company-scoped contract number (e.g. "CTR-0042").
-  contractNumber String         @map("contract_number")
-  status         ContractStatus @default(ACTIVE)
-  contractType   ContractType   @map("contract_type")
-
-  startDate        DateTime  @map("start_date") @db.Date
-  endDate          DateTime? @map("end_date") @db.Date
-  probationEndDate DateTime? @map("probation_end_date") @db.Date
-
-  weeklyHours Decimal  @default(40) @map("weekly_hours") @db.Decimal(5, 2)
-  dailyHours  Decimal  @default(8) @map("daily_hours") @db.Decimal(4, 2)
-  /// Full-time equivalent, 0.1–1.0.
-  fte         Decimal  @default(1.0) @db.Decimal(3, 2)
-  workWeek    WorkWeek @default(FIVE_DAY) @map("work_week")
-
-  vacationDaysPerYear   Int     @default(20) @map("vacation_days_per_year")
-  /// "Suminė darbo laiko apskaita" — aggregated/summarized working time
-  /// accounting, common for shift-based Lithuanian workplaces.
-  summarizedWorkingTime Boolean @default(false) @map("summarized_working_time")
-
-  canWorkWeekends Boolean @default(true) @map("can_work_weekends")
-  canWorkHolidays Boolean @default(false) @map("can_work_holidays")
-  canWorkNights   Boolean @default(true) @map("can_work_nights")
-
-  notes String?
-
+  active    Boolean  @default(true)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  company             Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  employee            Employee             @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  department          Department?          @relation(fields: [departmentId], references: [id], onDelete: SetNull)
-  position            Position?            @relation(fields: [positionId], references: [id], onDelete: SetNull)
-  scheduleAssignments ScheduleAssignment[]
+  company     Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  assignments ScheduleAssignment[]
 
-  @@unique([companyId, contractNumber])
+  @@unique([companyId, name])
   @@index([companyId])
-  @@index([employeeId])
-  @@index([companyId, employeeId, status])
-  @@index([departmentId])
-  @@index([positionId])
-  @@map("employment_contracts")
+  @@index([companyId, active])
+  @@map("absence_types")
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -479,12 +444,15 @@ model ShiftTemplate {
   @@map("shift_templates")
 }
 
+/// Exactly one of shiftTemplateId/absenceTypeId is set — never both, never
+/// neither. Enforced by a DB check constraint (see migration) plus DTO
+/// validation, since Prisma has no declarative XOR constraint.
 model ScheduleAssignment {
   id              String  @id @default(uuid())
   scheduleId      String  @map("schedule_id")
   employeeId      String  @map("employee_id")
-  contractId      String  @map("contract_id")
-  shiftTemplateId String  @map("shift_template_id")
+  shiftTemplateId String? @map("shift_template_id")
+  absenceTypeId   String? @map("absence_type_id")
   /// Who last created/edited this specific shift — the seed of a future
   /// per-cell version history.
   updatedBy       String? @map("updated_by")
@@ -495,16 +463,17 @@ model ScheduleAssignment {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  schedule      Schedule           @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
-  employee      Employee           @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  updater       User?              @relation("AssignmentUpdatedBy", fields: [updatedBy], references: [id], onDelete: SetNull)
-  contract      EmploymentContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
-  shiftTemplate ShiftTemplate      @relation(fields: [shiftTemplateId], references: [id], onDelete: Restrict)
+  schedule      Schedule       @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  employee      Employee       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  updater       User?          @relation("AssignmentUpdatedBy", fields: [updatedBy], references: [id], onDelete: SetNull)
+  shiftTemplate ShiftTemplate? @relation(fields: [shiftTemplateId], references: [id], onDelete: Restrict)
+  absenceType   AbsenceType?   @relation(fields: [absenceTypeId], references: [id], onDelete: Restrict)
 
   @@unique([scheduleId, employeeId, date])
   @@index([scheduleId])
   @@index([employeeId])
   @@index([scheduleId, date])
   @@index([shiftTemplateId])
+  @@index([absenceTypeId])
   @@map("schedule_assignments")
 }

@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
+import { useAbsenceTypes } from '@/hooks/useAbsenceTypes'
 import { useDepartments } from '@/hooks/useDepartments'
 import { usePositions } from '@/hooks/usePositions'
 import { useSchedulerRoster } from '@/hooks/useSchedulerRoster'
@@ -31,6 +32,7 @@ import type { EmployeeMonthlyHours } from '@/pages/scheduler/EmployeeRow'
 import { ScheduleGrid } from '@/pages/scheduler/ScheduleGrid'
 import type { CellActionParams } from '@/pages/scheduler/ScheduleCell'
 import { cellKey, dateKey, daysInMonth } from '@/pages/scheduler/schedule-grid.utils'
+import type { AbsenceType } from '@/types/absence-type.types'
 import type { ScheduleAssignment } from '@/types/schedule.types'
 import type { ShiftTemplate } from '@/types/shift-template.types'
 
@@ -69,6 +71,7 @@ export function SchedulerPage() {
   const departmentsQuery = useDepartments({ pageSize: 100 })
   const positionsQuery = usePositions({ pageSize: 100 })
   const shiftTemplatesQuery = useShiftTemplates({ pageSize: 100 })
+  const absenceTypesQuery = useAbsenceTypes({ pageSize: 100 })
 
   const monthQuery = useSchedules({ year, month, pageSize: 1 })
   const scheduleSummary = monthQuery.data?.items[0]
@@ -106,7 +109,7 @@ export function SchedulerPage() {
         toast.error(getErrorMessage(error))
       }
 
-      if (params.shiftTemplateId === null) {
+      if (params.shiftTemplateId === null && params.absenceTypeId === null) {
         if (params.assignmentId) {
           deleteMutate(params.assignmentId, { onError })
         }
@@ -114,15 +117,21 @@ export function SchedulerPage() {
       }
 
       if (params.assignmentId) {
-        updateMutate({ id: params.assignmentId, payload: { shiftTemplateId: params.shiftTemplateId } }, { onError })
+        updateMutate(
+          {
+            id: params.assignmentId,
+            payload: { shiftTemplateId: params.shiftTemplateId, absenceTypeId: params.absenceTypeId },
+          },
+          { onError },
+        )
       } else {
         createMutate(
           {
             scheduleId,
             employeeId: params.employeeId,
-            contractId: params.contractId,
             date: params.date,
-            shiftTemplateId: params.shiftTemplateId,
+            shiftTemplateId: params.shiftTemplateId ?? undefined,
+            absenceTypeId: params.absenceTypeId ?? undefined,
           },
           { onError },
         )
@@ -159,6 +168,19 @@ export function SchedulerPage() {
     [shiftTemplatesQuery.data],
   )
 
+  const absenceTypesById = useMemo(() => {
+    const map = new Map<string, AbsenceType>()
+    for (const absenceType of absenceTypesQuery.data?.items ?? []) {
+      map.set(absenceType.id, absenceType)
+    }
+    return map
+  }, [absenceTypesQuery.data])
+
+  const availableAbsenceTypes = useMemo(
+    () => (absenceTypesQuery.data?.items ?? []).filter((absenceType) => absenceType.active),
+    [absenceTypesQuery.data],
+  )
+
   // Structural memoization: only employees whose assigned/required numbers
   // actually changed get a new result object. Combined with ScheduleCell's
   // own memo, this is what keeps a single shift edit from re-rendering the
@@ -178,14 +200,14 @@ export function SchedulerPage() {
       else assignmentsByEmployeeId.set(assignment.employeeId, [assignment])
     }
 
-    for (const { employee, contract } of rosterQuery.data ?? []) {
-      if (!contract) continue
+    for (const employee of rosterQuery.data ?? []) {
+      if (employee.status !== 'ACTIVE') continue
       const employeeAssignments = assignmentsByEmployeeId.get(employee.id) ?? []
       const assigned = employeeAssignments.reduce((total, assignment) => {
-        const template = shiftTemplatesById.get(assignment.shiftTemplateId)
+        const template = assignment.shiftTemplateId ? shiftTemplatesById.get(assignment.shiftTemplateId) : undefined
         return template ? total + calculateShiftDurationHours(template) : total
       }, 0)
-      const required = calculateRequiredMonthlyHours(contract, year, month)
+      const required = calculateRequiredMonthlyHours(employee, year, month)
       const roundedAssigned = Math.round(assigned * 100) / 100
       const roundedRequired = Math.round(required * 100) / 100
 
@@ -203,31 +225,27 @@ export function SchedulerPage() {
   const filteredRoster = useMemo(() => {
     let list = rosterQuery.data ?? []
     if (activeOnly) {
-      list = list.filter((entry) => entry.employee.status === 'ACTIVE')
+      list = list.filter((employee) => employee.status === 'ACTIVE')
     }
     if (departmentFilter !== NONE_VALUE) {
-      list = list.filter((entry) => entry.contract?.departmentId === departmentFilter)
+      list = list.filter((employee) => employee.departmentId === departmentFilter)
     }
     if (positionFilter !== NONE_VALUE) {
-      list = list.filter((entry) => entry.contract?.positionId === positionFilter)
+      list = list.filter((employee) => employee.positionId === positionFilter)
     }
     if (search.trim()) {
       const query = search.trim().toLowerCase()
-      list = list.filter((entry) =>
-        `${entry.employee.firstName} ${entry.employee.lastName}`.toLowerCase().includes(query),
-      )
+      list = list.filter((employee) => `${employee.firstName} ${employee.lastName}`.toLowerCase().includes(query))
     }
 
     return [...list].sort((a, b) => {
       if (sortBy === 'department') {
-        return (a.contract?.departmentName ?? '').localeCompare(b.contract?.departmentName ?? '')
+        return (a.departmentName ?? '').localeCompare(b.departmentName ?? '')
       }
       if (sortBy === 'position') {
-        return (a.contract?.positionTitle ?? '').localeCompare(b.contract?.positionTitle ?? '')
+        return (a.positionTitle ?? '').localeCompare(b.positionTitle ?? '')
       }
-      return `${a.employee.firstName} ${a.employee.lastName}`.localeCompare(
-        `${b.employee.firstName} ${b.employee.lastName}`,
-      )
+      return `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`)
     })
   }, [rosterQuery.data, activeOnly, departmentFilter, positionFilter, search, sortBy])
 
@@ -476,7 +494,9 @@ export function SchedulerPage() {
               days={days}
               assignmentsByKey={assignmentsByKey}
               shiftTemplatesById={shiftTemplatesById}
+              absenceTypesById={absenceTypesById}
               availableTemplates={availableTemplates}
+              availableAbsenceTypes={availableAbsenceTypes}
               hoursByEmployee={hoursByEmployee}
               disabled={!isEditable}
               onAction={handleCellAction}

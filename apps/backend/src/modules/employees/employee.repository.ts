@@ -6,10 +6,20 @@ import { toPrismaSkipTake } from "@/shared/utils/pagination.util";
 
 type Client = PrismaClient | Prisma.TransactionClient;
 
+const employeeWithRelations = Prisma.validator<Prisma.EmployeeDefaultArgs>()({
+  include: {
+    department: { select: { name: true } },
+    position: { select: { title: true } },
+  },
+});
+export type EmployeeWithRelations = Prisma.EmployeeGetPayload<typeof employeeWithRelations>;
+
 export interface ListEmployeesFilter {
   companyId: string;
   search?: string;
   status?: Prisma.EmployeeWhereInput["status"];
+  departmentId?: string;
+  positionId?: string;
   sortBy: EmployeeSortBy;
   sortOrder: "asc" | "desc";
   /** When set, restricts results to the employee record linked to this User (self-service view). */
@@ -27,8 +37,8 @@ function buildOrderBy(sortBy: EmployeeSortBy, sortOrder: "asc" | "desc"): Prisma
 }
 
 export class EmployeeRepository {
-  async create(data: Prisma.EmployeeUncheckedCreateInput, client: Client = prisma): Promise<Employee> {
-    return client.employee.create({ data });
+  async create(data: Prisma.EmployeeUncheckedCreateInput, client: Client = prisma): Promise<EmployeeWithRelations> {
+    return client.employee.create({ data, include: employeeWithRelations.include });
   }
 
   /**
@@ -37,12 +47,15 @@ export class EmployeeRepository {
    * employee by id. List-view visibility is controlled by findMany's status
    * scoping instead.
    */
-  async findByIdInCompany(id: string, companyId: string, client: Client = prisma): Promise<Employee | null> {
-    return client.employee.findFirst({ where: { id, companyId } });
+  async findByIdInCompany(id: string, companyId: string, client: Client = prisma): Promise<EmployeeWithRelations | null> {
+    return client.employee.findFirst({ where: { id, companyId }, include: employeeWithRelations.include });
   }
 
-  async findByUserId(userId: string, companyId: string, client: Client = prisma): Promise<Employee | null> {
-    return client.employee.findFirst({ where: { userId, companyId, deletedAt: null } });
+  async findByUserId(userId: string, companyId: string, client: Client = prisma): Promise<EmployeeWithRelations | null> {
+    return client.employee.findFirst({
+      where: { userId, companyId, deletedAt: null },
+      include: employeeWithRelations.include,
+    });
   }
 
   async countInCompany(companyId: string, client: Client = prisma): Promise<number> {
@@ -53,15 +66,15 @@ export class EmployeeRepository {
     return client.employee.findFirst({ where: { employeeCode, companyId } });
   }
 
-  async update(id: string, data: Prisma.EmployeeUpdateInput, client: Client = prisma): Promise<Employee> {
-    return client.employee.update({ where: { id }, data });
+  async update(id: string, data: Prisma.EmployeeUpdateInput, client: Client = prisma): Promise<EmployeeWithRelations> {
+    return client.employee.update({ where: { id }, data, include: employeeWithRelations.include });
   }
 
   async findMany(
     filter: ListEmployeesFilter,
     pagination: PaginationQuery,
     client: Client = prisma,
-  ): Promise<{ items: Employee[]; total: number }> {
+  ): Promise<{ items: EmployeeWithRelations[]; total: number }> {
     const { skip, take } = toPrismaSkipTake(pagination);
     const where: Prisma.EmployeeWhereInput = {
       companyId: filter.companyId,
@@ -69,6 +82,8 @@ export class EmployeeRepository {
       // (including ARCHIVED) always takes precedence over that default.
       ...(filter.status ? { status: filter.status } : { status: { not: "ARCHIVED" } }),
       ...(filter.restrictToUserId ? { userId: filter.restrictToUserId } : {}),
+      ...(filter.departmentId ? { departmentId: filter.departmentId } : {}),
+      ...(filter.positionId ? { positionId: filter.positionId } : {}),
       ...(filter.search
         ? {
             OR: [
@@ -77,17 +92,34 @@ export class EmployeeRepository {
               { employeeCode: { contains: filter.search, mode: "insensitive" } },
               { email: { contains: filter.search, mode: "insensitive" } },
               { phone: { contains: filter.search, mode: "insensitive" } },
-              { personalCode: { contains: filter.search, mode: "insensitive" } },
             ],
           }
         : {}),
     };
 
     const [items, total] = await Promise.all([
-      client.employee.findMany({ where, skip, take, orderBy: buildOrderBy(filter.sortBy, filter.sortOrder) }),
+      client.employee.findMany({
+        where,
+        include: employeeWithRelations.include,
+        skip,
+        take,
+        orderBy: buildOrderBy(filter.sortBy, filter.sortOrder),
+      }),
       client.employee.count({ where }),
     ]);
     return { items, total };
+  }
+
+  /**
+   * Every currently-active employee in the company, unpaginated. Used by the
+   * scheduler to determine which employees may receive shifts (e.g. when
+   * copying the previous month's assignments into a new draft).
+   */
+  async findAllActiveForCompany(companyId: string, client: Client = prisma): Promise<EmployeeWithRelations[]> {
+    return client.employee.findMany({
+      where: { companyId, status: "ACTIVE" },
+      include: employeeWithRelations.include,
+    });
   }
 
   /** Soft-deletes: sets the ARCHIVED status in lockstep with deletedAt/isActive. Never a hard delete. */

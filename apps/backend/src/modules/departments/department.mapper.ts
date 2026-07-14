@@ -10,7 +10,7 @@ export function toDepartmentResponseDto(department: DepartmentWithCount): Depart
     color: department.color,
     isActive: department.isActive,
     isArchived: department.deletedAt !== null,
-    employeeCount: department._count.employmentContracts,
+    employeeCount: department._count.employees,
     createdAt: department.createdAt.toISOString(),
   };
 }

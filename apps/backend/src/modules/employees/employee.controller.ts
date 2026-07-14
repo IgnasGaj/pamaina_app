@@ -1,6 +1,5 @@
 import { Request, Response } from "express";
 import * as employeeService from "@/modules/employees/employee.service";
-import * as contractService from "@/modules/contracts/contract.service";
 import { CreateEmployeeDto, ListEmployeesQuery, UpdateEmployeeDto } from "@/modules/employees/employee.dto";
 import { sendSuccess } from "@/shared/utils/api-response.util";
 import { ForbiddenError } from "@/shared/errors";
@@ -62,18 +61,4 @@ export async function restore(req: Request, res: Response): Promise<void> {
   const { id } = req.params as { id: string };
   const employee = await employeeService.restoreEmployee(req.user!.companyId!, id);
   sendSuccess(res, employee);
-}
-
-export async function getContracts(req: Request, res: Response): Promise<void> {
-  const { id } = req.params as { id: string };
-
-  if (isSelfServiceOnly(req)) {
-    const own = await employeeService.getOwnEmployeeProfileOrThrow(req.user!.companyId!, req.user!.id);
-    if (own.id !== id) {
-      throw new ForbiddenError("You can only view your own contracts");
-    }
-  }
-
-  const contracts = await contractService.listContractsForEmployee(req.user!.companyId!, id);
-  sendSuccess(res, contracts);
 }

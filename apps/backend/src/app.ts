@@ -18,6 +18,8 @@ import departmentRoutes from "@/modules/departments/department.routes";
 import positionRoutes from "@/modules/positions/position.routes";
 import employeeRoutes from "@/modules/employees/employee.routes";
 import contractRoutes from "@/modules/contracts/contract.routes";
+import scheduleRoutes from "@/modules/schedules/schedule.routes";
+import scheduleAssignmentRoutes from "@/modules/schedules/schedule-assignment.routes";
 
 export function createApp(): Express {
   const app = express();
@@ -52,6 +54,8 @@ export function createApp(): Express {
   api.use("/positions", positionRoutes);
   api.use("/employees", employeeRoutes);
   api.use("/contracts", contractRoutes);
+  api.use("/schedules", scheduleRoutes);
+  api.use("/schedule-assignments", scheduleAssignmentRoutes);
 
   app.use(env.API_PREFIX, api);
 

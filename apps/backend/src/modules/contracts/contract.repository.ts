@@ -112,6 +112,18 @@ export class ContractRepository {
       orderBy: [{ startDate: "desc" }, { createdAt: "desc" }],
     });
   }
+
+  /**
+   * Every currently-active contract in the company, unpaginated. Used by the
+   * scheduler to determine which employees may receive shifts (e.g. when
+   * copying the previous month's assignments into a new draft).
+   */
+  async findAllActiveForCompany(companyId: string, client: Client = prisma): Promise<ContractWithRelations[]> {
+    return client.employmentContract.findMany({
+      where: { companyId, status: "ACTIVE" },
+      include: contractWithRelations.include,
+    });
+  }
 }
 
 export const contractRepository = new ContractRepository();

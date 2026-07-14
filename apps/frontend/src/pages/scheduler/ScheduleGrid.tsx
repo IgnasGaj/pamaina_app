@@ -1,0 +1,60 @@
+import { EmployeeRow } from '@/pages/scheduler/EmployeeRow'
+import type { CellActionParams } from '@/pages/scheduler/ScheduleCell'
+import type { SchedulerEmployee } from '@/hooks/useSchedulerRoster'
+import type { ScheduleAssignment } from '@/types/schedule.types'
+
+export function ScheduleGrid({
+  roster,
+  days,
+  assignmentsByKey,
+  disabled,
+  onAction,
+}: {
+  roster: SchedulerEmployee[]
+  days: string[]
+  assignmentsByKey: Map<string, ScheduleAssignment>
+  disabled: boolean
+  onAction: (params: CellActionParams) => void
+}) {
+  return (
+    <div className="overflow-auto rounded-lg border border-border" style={{ maxHeight: 'calc(100vh - 340px)' }}>
+      <table className="w-full border-collapse">
+        <thead className="sticky top-0 z-20 bg-background">
+          <tr className="border-b border-border">
+            <th className="sticky left-0 z-30 min-w-64 border-r border-border bg-background px-3 py-2 text-left text-xs font-medium text-muted-foreground">
+              Employee
+            </th>
+            {days.map((date) => (
+              <th
+                key={date}
+                className="min-w-9 px-0.5 py-2 text-center text-xs font-medium text-muted-foreground"
+              >
+                {Number(date.slice(-2))}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {roster.map(({ employee, contract }) => (
+            <EmployeeRow
+              key={employee.id}
+              employee={employee}
+              contract={contract}
+              days={days}
+              assignmentsByKey={assignmentsByKey}
+              disabled={disabled || !contract}
+              onAction={onAction}
+            />
+          ))}
+          {roster.length === 0 && (
+            <tr>
+              <td colSpan={days.length + 1} className="py-8 text-center text-sm text-muted-foreground">
+                No employees match your filters.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  )
+}

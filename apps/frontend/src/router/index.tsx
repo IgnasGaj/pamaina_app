@@ -13,6 +13,7 @@ import { EmployeesPage } from '@/pages/employees/EmployeesPage'
 import { EmployeeDetailsPage } from '@/pages/employees/EmployeeDetailsPage'
 import { ContractsPage } from '@/pages/contracts/ContractsPage'
 import { ContractDetailsPage } from '@/pages/contracts/ContractDetailsPage'
+import { SchedulerPage } from '@/pages/scheduler/SchedulerPage'
 import { UsersPage } from '@/pages/users/UsersPage'
 import { CompanySettingsPage } from '@/pages/settings/CompanySettingsPage'
 import { ForbiddenPage } from '@/pages/errors/ForbiddenPage'
@@ -47,6 +48,10 @@ export const router = createBrowserRouter([
                   { path: 'contracts', element: <ContractsPage /> },
                   { path: 'contracts/:id', element: <ContractDetailsPage /> },
                 ],
+              },
+              {
+                element: <RequirePermission anyOf={[PERMISSIONS.SCHEDULE_READ]} />,
+                children: [{ path: 'scheduler', element: <SchedulerPage /> }],
               },
               {
                 element: (

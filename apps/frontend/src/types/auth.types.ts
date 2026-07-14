@@ -27,6 +27,10 @@ export const PERMISSIONS = {
   CONTRACT_CREATE: 'contract.create',
   CONTRACT_READ: 'contract.read',
   CONTRACT_UPDATE: 'contract.update',
+
+  SCHEDULE_CREATE: 'schedule.create',
+  SCHEDULE_READ: 'schedule.read',
+  SCHEDULE_UPDATE: 'schedule.update',
 } as const
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS]

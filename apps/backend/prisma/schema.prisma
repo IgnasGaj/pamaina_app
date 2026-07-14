@@ -21,24 +21,24 @@ datasource db {
 // ─────────────────────────────────────────────────────────────────────────
 
 model Company {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   name      String
   /// URL/slug-safe unique identifier, e.g. used for tenant-aware routing.
-  slug      String   @unique
+  slug      String    @unique
   /// Lithuanian company registration code (Juridinio asmens kodas).
-  legalCode String?  @unique @map("legal_code")
+  legalCode String?   @unique @map("legal_code")
   /// Lithuanian VAT code (PVM mokėtojo kodas).
-  vatCode   String?  @map("vat_code")
+  vatCode   String?   @map("vat_code")
   email     String
   phone     String?
   address   String?
   city      String?
-  country   String   @default("LT")
-  timezone  String   @default("Europe/Vilnius")
-  isActive  Boolean  @default(true) @map("is_active")
+  country   String    @default("LT")
+  timezone  String    @default("Europe/Vilnius")
+  isActive  Boolean   @default(true) @map("is_active")
   deletedAt DateTime? @map("deleted_at")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
 
   roles               Role[]
   users               User[]
@@ -46,6 +46,7 @@ model Company {
   positions           Position[]
   employees           Employee[]
   employmentContracts EmploymentContract[]
+  schedules           Schedule[]
   settings            CompanySettings?
 
   @@index([isActive])
@@ -136,11 +137,11 @@ model Permission {
 }
 
 model Role {
-  id        String   @id @default(uuid())
+  id          String   @id @default(uuid())
   /// Null for global system roles (templates); set for a company-defined
   /// custom role scoped to that company.
-  companyId String?  @map("company_id")
-  name      String
+  companyId   String?  @map("company_id")
+  name        String
   /// Stable key used by application code for authorization checks.
   /// One of SystemRoleKey for seeded roles, or a free-form slug for
   /// company-defined custom roles.
@@ -186,10 +187,11 @@ model User {
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
-  company       Company?       @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  role          Role           @relation(fields: [roleId], references: [id], onDelete: Restrict)
-  employee      Employee?
-  refreshTokens RefreshToken[]
+  company          Company?       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  role             Role           @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  employee         Employee?
+  refreshTokens    RefreshToken[]
+  createdSchedules Schedule[]
 
   @@index([companyId])
   @@index([roleId])
@@ -197,19 +199,19 @@ model User {
 }
 
 model RefreshToken {
-  id           String    @id @default(uuid())
-  userId       String    @map("user_id")
+  id          String    @id @default(uuid())
+  userId      String    @map("user_id")
   /// SHA-256 hash of the refresh token — the raw token is never persisted.
-  tokenHash    String    @unique @map("token_hash")
-  expiresAt    DateTime  @map("expires_at")
+  tokenHash   String    @unique @map("token_hash")
+  expiresAt   DateTime  @map("expires_at")
   /// Carried forward across rotations so a "Remember me" choice made at
   /// login still applies to the cookie set by later silent refreshes.
-  rememberMe   Boolean   @default(false) @map("remember_me")
-  revokedAt    DateTime? @map("revoked_at")
-  replacedBy   String?   @map("replaced_by")
-  createdByIp  String?   @map("created_by_ip")
-  userAgent    String?   @map("user_agent")
-  createdAt    DateTime  @default(now()) @map("created_at")
+  rememberMe  Boolean   @default(false) @map("remember_me")
+  revokedAt   DateTime? @map("revoked_at")
+  replacedBy  String?   @map("replaced_by")
+  createdByIp String?   @map("created_by_ip")
+  userAgent   String?   @map("user_agent")
+  createdAt   DateTime  @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -292,26 +294,27 @@ model Employee {
   userId    String? @unique @map("user_id")
 
   /// Company-scoped personnel number (e.g. "EMP-0042").
-  employeeCode String  @map("employee_code")
-  firstName    String  @map("first_name")
-  lastName     String  @map("last_name")
+  employeeCode String    @map("employee_code")
+  firstName    String    @map("first_name")
+  lastName     String    @map("last_name")
   email        String?
   phone        String?
   /// National personal identification code (e.g. Lithuanian asmens kodas).
-  personalCode String? @map("personal_code")
+  personalCode String?   @map("personal_code")
   birthDate    DateTime? @map("birth_date") @db.Date
 
   /// Record lifecycle: ACTIVE/INACTIVE are editable directly; ARCHIVED is
   /// only set by the archive endpoint, in lockstep with deletedAt/isActive.
   status    EmployeeStatus @default(ACTIVE)
-  isActive  Boolean   @default(true) @map("is_active")
-  deletedAt DateTime? @map("deleted_at")
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
+  isActive  Boolean        @default(true) @map("is_active")
+  deletedAt DateTime?      @map("deleted_at")
+  createdAt DateTime       @default(now()) @map("created_at")
+  updatedAt DateTime       @updatedAt @map("updated_at")
 
   company             Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
   user                User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
   employmentContracts EmploymentContract[]
+  scheduleAssignments ScheduleAssignment[]
 
   @@unique([companyId, employeeCode])
   @@index([companyId])
@@ -357,9 +360,9 @@ model EmploymentContract {
   status         ContractStatus @default(ACTIVE)
   contractType   ContractType   @map("contract_type")
 
-  startDate         DateTime  @map("start_date") @db.Date
-  endDate           DateTime? @map("end_date") @db.Date
-  probationEndDate  DateTime? @map("probation_end_date") @db.Date
+  startDate        DateTime  @map("start_date") @db.Date
+  endDate          DateTime? @map("end_date") @db.Date
+  probationEndDate DateTime? @map("probation_end_date") @db.Date
 
   weeklyHours Decimal  @default(40) @map("weekly_hours") @db.Decimal(5, 2)
   dailyHours  Decimal  @default(8) @map("daily_hours") @db.Decimal(4, 2)
@@ -381,10 +384,11 @@ model EmploymentContract {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  company    Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  employee   Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  department Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
-  position   Position?   @relation(fields: [positionId], references: [id], onDelete: SetNull)
+  company             Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employee            Employee             @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  department          Department?          @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  position            Position?            @relation(fields: [positionId], references: [id], onDelete: SetNull)
+  scheduleAssignments ScheduleAssignment[]
 
   @@unique([companyId, contractNumber])
   @@index([companyId])
@@ -393,4 +397,74 @@ model EmploymentContract {
   @@index([departmentId])
   @@index([positionId])
   @@map("employment_contracts")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Monthly scheduler — the core scheduling feature. ScheduleAssignment is
+// intentionally a plain (employee, date, shiftType) fact table so future
+// features (working-hour engine, rest-period validation, warnings, shift
+// templates, overtime) can layer their own read-side logic on top without
+// changing this shape.
+// ─────────────────────────────────────────────────────────────────────────
+
+enum ScheduleStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum ShiftType {
+  MORNING
+  AFTERNOON
+  NIGHT
+  DAY
+  OFF
+  VACATION
+  SICK
+}
+
+model Schedule {
+  id        String         @id @default(uuid())
+  companyId String         @map("company_id")
+  year      Int
+  month     Int
+  status    ScheduleStatus @default(DRAFT)
+  createdBy String         @map("created_by")
+
+  publishedAt DateTime? @map("published_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  company     Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  creator     User                 @relation(fields: [createdBy], references: [id], onDelete: Restrict)
+  assignments ScheduleAssignment[]
+
+  @@unique([companyId, year, month])
+  @@index([companyId])
+  @@index([companyId, status])
+  @@map("schedules")
+}
+
+model ScheduleAssignment {
+  id         String @id @default(uuid())
+  scheduleId String @map("schedule_id")
+  employeeId String @map("employee_id")
+  contractId String @map("contract_id")
+
+  date      DateTime  @db.Date
+  shiftType ShiftType @map("shift_type")
+  notes     String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  schedule Schedule           @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  employee Employee           @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  contract EmploymentContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@unique([scheduleId, employeeId, date])
+  @@index([scheduleId])
+  @@index([employeeId])
+  @@index([scheduleId, date])
+  @@map("schedule_assignments")
 }

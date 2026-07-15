@@ -2,6 +2,7 @@ import { apiClient, unwrap, unwrapPaginated } from '@/lib/api-client'
 import type { PaginatedResult } from '@/types/api.types'
 import type {
   CreateEmployeePayload,
+  CreateEmployeeResult,
   Employee,
   ListEmployeesQuery,
   UpdateEmployeePayload,
@@ -24,7 +25,7 @@ export function updateOwnEmployee(payload: UpdateOwnProfilePayload): Promise<Emp
   return unwrap(apiClient.patch('/employees/me', payload))
 }
 
-export function createEmployee(payload: CreateEmployeePayload): Promise<Employee> {
+export function createEmployee(payload: CreateEmployeePayload): Promise<CreateEmployeeResult> {
   return unwrap(apiClient.post('/employees', payload))
 }
 

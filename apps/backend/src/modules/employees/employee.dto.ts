@@ -21,7 +21,9 @@ export const createEmployeeSchema = z
   .object({
     firstName: z.string().min(1).max(100),
     lastName: z.string().min(1).max(100),
-    email: z.string().email().optional(),
+    // Required: every new employee automatically receives a linked login
+    // account, so an email is needed to create it.
+    email: z.string().email(),
     phone: z.string().max(30).optional(),
     departmentId: z.string().uuid().optional(),
     positionId: z.string().uuid().optional(),
@@ -101,3 +103,15 @@ export const employeeResponseSchema = z.object({
   createdAt: z.string(),
 });
 export type EmployeeResponseDto = z.infer<typeof employeeResponseSchema>;
+
+/**
+ * Shape of the create-employee response only: alongside the created
+ * Employee, the system-generated temporary password is returned exactly
+ * once so the manager can hand it to the new employee. It is never
+ * retrievable again afterwards — only its bcrypt hash is persisted.
+ */
+export const employeeCreatedResponseSchema = z.object({
+  employee: employeeResponseSchema,
+  temporaryPassword: z.string(),
+});
+export type EmployeeCreatedResponseDto = z.infer<typeof employeeCreatedResponseSchema>;

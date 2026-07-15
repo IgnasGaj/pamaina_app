@@ -31,7 +31,8 @@ export interface Employee {
 export interface CreateEmployeePayload {
   firstName: string
   lastName: string
-  email?: string
+  /** Required: every new employee automatically receives a linked login account. */
+  email: string
   phone?: string
   departmentId?: string
   positionId?: string
@@ -40,6 +41,12 @@ export interface CreateEmployeePayload {
   endDate?: string | null
   notes?: string
   employeeCode?: string
+}
+
+/** Response for a create — the temporary password is only ever returned here, once. */
+export interface CreateEmployeeResult {
+  employee: Employee
+  temporaryPassword: string
 }
 
 export interface UpdateEmployeePayload {

@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
+import { Check, Copy } from 'lucide-react'
 import { toast } from 'sonner'
 import { z } from 'zod'
 
@@ -40,35 +41,42 @@ function todayDateString(): string {
   return new Date().toISOString().slice(0, 10)
 }
 
-const employeeSchema = z
-  .object({
-    firstName: z.string().min(1, 'First name is required').max(100),
-    lastName: z.string().min(1, 'Last name is required').max(100),
-    email: z.string().email('Enter a valid email').optional().or(z.literal('')),
-    phone: z
-      .string()
-      .max(30)
-      .regex(/^[0-9+()\-\s]*$/, 'Enter a valid phone number')
-      .optional()
-      .or(z.literal('')),
-    departmentId: z.string(),
-    positionId: z.string(),
-    employmentType: z.enum(['FULL_TIME', 'PART_TIME_75', 'PART_TIME_50', 'PART_TIME_25']),
-    startDate: z.string().refine(isValidDateString, 'Enter a valid date'),
-    endDate: z
-      .string()
-      .optional()
-      .or(z.literal(''))
-      .refine((value) => !value || isValidDateString(value), 'Enter a valid date'),
-    notes: z.string().max(2000).optional().or(z.literal('')),
-    status: z.enum(['ACTIVE', 'INACTIVE']),
-  })
-  .refine((data) => !data.endDate || new Date(data.endDate) > new Date(data.startDate), {
-    message: 'End date must be after the start date',
-    path: ['endDate'],
-  })
+// Creating an employee always requires a valid email — it becomes the login
+// for their automatically-provisioned account. Editing still allows clearing
+// it (the linked account keeps its existing login email in that case).
+function buildEmployeeSchema(isEditing: boolean) {
+  return z
+    .object({
+      firstName: z.string().min(1, 'First name is required').max(100),
+      lastName: z.string().min(1, 'Last name is required').max(100),
+      email: isEditing
+        ? z.string().email('Enter a valid email').optional().or(z.literal(''))
+        : z.string().email('Enter a valid email'),
+      phone: z
+        .string()
+        .max(30)
+        .regex(/^[0-9+()\-\s]*$/, 'Enter a valid phone number')
+        .optional()
+        .or(z.literal('')),
+      departmentId: z.string(),
+      positionId: z.string(),
+      employmentType: z.enum(['FULL_TIME', 'PART_TIME_75', 'PART_TIME_50', 'PART_TIME_25']),
+      startDate: z.string().refine(isValidDateString, 'Enter a valid date'),
+      endDate: z
+        .string()
+        .optional()
+        .or(z.literal(''))
+        .refine((value) => !value || isValidDateString(value), 'Enter a valid date'),
+      notes: z.string().max(2000).optional().or(z.literal('')),
+      status: z.enum(['ACTIVE', 'INACTIVE']),
+    })
+    .refine((data) => !data.endDate || new Date(data.endDate) > new Date(data.startDate), {
+      message: 'End date must be after the start date',
+      path: ['endDate'],
+    })
+}
 
-type EmployeeFormValues = z.infer<typeof employeeSchema>
+type EmployeeFormValues = z.infer<ReturnType<typeof buildEmployeeSchema>>
 
 export function EmployeeFormDialog({
   open,
@@ -84,6 +92,9 @@ export function EmployeeFormDialog({
   const updateEmployee = useUpdateEmployee(employee?.id ?? '')
   const departmentsQuery = useDepartments({ pageSize: 100 })
   const positionsQuery = usePositions({ pageSize: 100 })
+  const [temporaryLogin, setTemporaryLogin] = useState<{ email: string; temporaryPassword: string } | null>(null)
+  const [copied, setCopied] = useState(false)
+  const employeeSchema = useMemo(() => buildEmployeeSchema(isEditing), [isEditing])
 
   const {
     register,
@@ -110,6 +121,8 @@ export function EmployeeFormDialog({
 
   useEffect(() => {
     if (open) {
+      setTemporaryLogin(null)
+      setCopied(false)
       reset({
         firstName: employee?.firstName ?? '',
         lastName: employee?.lastName ?? '',
@@ -146,10 +159,12 @@ export function EmployeeFormDialog({
         })
         toast.success('Employee updated')
       } else {
-        await createEmployee.mutateAsync({
+        // Guaranteed non-empty by buildEmployeeSchema when !isEditing.
+        const email = values.email!
+        const result = await createEmployee.mutateAsync({
           firstName: values.firstName,
           lastName: values.lastName,
-          email: values.email || undefined,
+          email,
           phone: values.phone || undefined,
           departmentId,
           positionId,
@@ -159,6 +174,10 @@ export function EmployeeFormDialog({
           notes: values.notes || undefined,
         })
         toast.success('Employee created')
+        // Show the one-time temporary login instead of closing — this is the
+        // only place the plaintext password is ever available.
+        setTemporaryLogin({ email: result.employee.email ?? email, temporaryPassword: result.temporaryPassword })
+        return
       }
       onOpenChange(false)
     } catch (error) {
@@ -166,7 +185,54 @@ export function EmployeeFormDialog({
     }
   }
 
+  async function handleCopyPassword() {
+    if (!temporaryLogin) return
+    await navigator.clipboard.writeText(temporaryLogin.temporaryPassword)
+    setCopied(true)
+    toast.success('Temporary password copied')
+  }
+
   const isPending = createEmployee.isPending || updateEmployee.isPending
+
+  if (temporaryLogin) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Employee created successfully</DialogTitle>
+            <DialogDescription>
+              Share this temporary login with the employee. The password is only shown once and cannot be retrieved again.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 rounded-md border bg-muted/40 p-4">
+            <div className="space-y-1">
+              <p className="text-xs font-medium uppercase text-muted-foreground">Email</p>
+              <p className="font-mono text-sm">{temporaryLogin.email}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs font-medium uppercase text-muted-foreground">Temporary password</p>
+              <div className="flex items-center gap-2">
+                <p className="flex-1 rounded border bg-background px-2 py-1.5 font-mono text-sm">
+                  {temporaryLogin.temporaryPassword}
+                </p>
+                <Button type="button" variant="outline" size="icon" onClick={() => void handleCopyPassword()}>
+                  {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
+                </Button>
+              </div>
+            </div>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            The employee will be required to set their own password the first time they sign in.
+          </p>
+          <DialogFooter>
+            <Button type="button" onClick={() => onOpenChange(false)}>
+              Done
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    )
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -174,7 +240,7 @@ export function EmployeeFormDialog({
         <DialogHeader>
           <DialogTitle>{isEditing ? 'Edit employee' : 'New employee'}</DialogTitle>
           <DialogDescription>
-            {isEditing ? 'Update the employee record.' : 'Add a new employee — they will be available in the scheduler immediately.'}
+            {isEditing ? 'Update the employee record.' : 'Add a new employee — a login account is created for them automatically.'}
           </DialogDescription>
         </DialogHeader>
         <form className="space-y-4" onSubmit={(e) => void handleSubmit(onSubmit)(e)}>
@@ -195,7 +261,11 @@ export function EmployeeFormDialog({
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input id="email" type="email" {...register('email')} />
-              {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
+              {errors.email ? (
+                <p className="text-sm text-destructive">{errors.email.message}</p>
+              ) : (
+                !isEditing && <p className="text-xs text-muted-foreground">Used as the employee's login.</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="phone">Phone</Label>

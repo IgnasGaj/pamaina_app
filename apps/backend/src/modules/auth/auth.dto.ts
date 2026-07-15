@@ -51,6 +51,9 @@ export const authUserResponseSchema = z.object({
   // Null while the owning company is still onboarding, or for
   // company-less accounts (e.g. platform Super Admins).
   onboardingCompletedAt: z.string().nullable(),
+  // True for accounts still on a system-generated temporary password (e.g.
+  // employees just provisioned by a manager) until they set their own.
+  mustChangePassword: z.boolean(),
 });
 export type AuthUserResponseDto = z.infer<typeof authUserResponseSchema>;
 

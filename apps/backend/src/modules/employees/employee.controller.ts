@@ -20,8 +20,8 @@ function isSelfServiceOnly(req: Request): boolean {
 }
 
 export async function create(req: Request, res: Response): Promise<void> {
-  const employee = await employeeService.createEmployee(req.user!.companyId!, req.body as CreateEmployeeDto);
-  sendSuccess(res, employee, 201);
+  const result = await employeeService.createEmployee(req.user!.companyId!, req.body as CreateEmployeeDto);
+  sendSuccess(res, result, 201);
 }
 
 /** No id param needed — resolves the caller's own linked Employee record directly. */

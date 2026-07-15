@@ -61,6 +61,7 @@ export interface AuthUser {
   roleName: string
   permissions: PermissionKey[]
   onboardingCompletedAt: string | null
+  mustChangePassword: boolean
 }
 
 export interface AuthTokens {

@@ -25,8 +25,9 @@ export class AuthRepository {
     await client.user.update({ where: { id: userId }, data: { lastLoginAt: new Date() } });
   }
 
+  /** Changing the password always clears mustChangePassword — this is the only way that flag is ever unset. */
   async updatePasswordHash(userId: string, passwordHash: string, client: Client = prisma): Promise<void> {
-    await client.user.update({ where: { id: userId }, data: { passwordHash } });
+    await client.user.update({ where: { id: userId }, data: { passwordHash, mustChangePassword: false } });
   }
 
   async createUser(

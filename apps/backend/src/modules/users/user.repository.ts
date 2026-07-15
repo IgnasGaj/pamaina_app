@@ -34,6 +34,7 @@ export class UserRepository {
       firstName: string;
       lastName: string;
       phone?: string;
+      mustChangePassword?: boolean;
     },
     client: Client = prisma,
   ): Promise<UserWithRoleName> {

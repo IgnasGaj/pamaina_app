@@ -46,6 +46,10 @@ export const PERMISSIONS = {
 
   WORKING_TIME_READ: "working_time.read",
   WORKING_TIME_MANAGE: "working_time.manage",
+
+  REQUEST_CREATE: "request.create",
+  REQUEST_READ: "request.read",
+  REQUEST_MANAGE: "request.manage",
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

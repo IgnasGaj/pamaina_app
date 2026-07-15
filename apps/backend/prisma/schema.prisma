@@ -49,6 +49,8 @@ model Company {
   shiftTemplates        ShiftTemplate[]
   absenceTypes          AbsenceType[]
   companyNonWorkingDays CompanyNonWorkingDay[]
+  employeeRequests      EmployeeRequest[]
+  notifications         Notification[]
   settings              CompanySettings?
 
   @@index([isActive])
@@ -196,6 +198,8 @@ model User {
   createdSchedules   Schedule[]           @relation("ScheduleCreatedBy")
   updatedSchedules   Schedule[]           @relation("ScheduleUpdatedBy")
   updatedAssignments ScheduleAssignment[] @relation("AssignmentUpdatedBy")
+  reviewedRequests   EmployeeRequest[]    @relation("RequestReviewedBy")
+  notifications      Notification[]
 
   @@index([companyId])
   @@index([roleId])
@@ -334,6 +338,7 @@ model Employee {
   department          Department?          @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   position            Position?            @relation(fields: [positionId], references: [id], onDelete: SetNull)
   scheduleAssignments ScheduleAssignment[]
+  requests            EmployeeRequest[]
 
   @@unique([companyId, employeeCode])
   @@index([companyId])
@@ -364,6 +369,7 @@ model AbsenceType {
 
   company     Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
   assignments ScheduleAssignment[]
+  requests    EmployeeRequest[]
 
   @@unique([companyId, name])
   @@index([companyId])
@@ -504,4 +510,81 @@ model CompanyNonWorkingDay {
   @@unique([companyId, date])
   @@index([companyId])
   @@map("company_non_working_days")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Employee self-service requests (vacation, sick leave, day off, ...) — the
+// "type" reuses the company's own AbsenceType list rather than a parallel
+// enum, since AbsenceType already models exactly this (including letting a
+// manager add a custom one beyond the seeded defaults).
+// ─────────────────────────────────────────────────────────────────────────
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  /// Withdrawn by the employee themselves, only reachable while PENDING.
+  CANCELLED
+}
+
+model EmployeeRequest {
+  id            String        @id @default(uuid())
+  companyId     String        @map("company_id")
+  employeeId    String        @map("employee_id")
+  absenceTypeId String        @map("absence_type_id")
+  startDate     DateTime      @map("start_date") @db.Date
+  endDate       DateTime      @map("end_date") @db.Date
+  comment       String?
+  status        RequestStatus @default(PENDING)
+
+  reviewedBy    String?   @map("reviewed_by")
+  reviewedAt    DateTime? @map("reviewed_at")
+  reviewComment String?   @map("review_comment")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  company     Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employee    Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  absenceType AbsenceType @relation(fields: [absenceTypeId], references: [id], onDelete: Restrict)
+  reviewer    User?       @relation("RequestReviewedBy", fields: [reviewedBy], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([companyId, status])
+  @@map("employee_requests")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// In-app notifications only (no push/email yet). Owned by User rather than
+// Employee since Managers/Owners receive them too (e.g. a new request).
+// ─────────────────────────────────────────────────────────────────────────
+
+enum NotificationType {
+  SCHEDULE_PUBLISHED
+  REQUEST_SUBMITTED
+  REQUEST_APPROVED
+  REQUEST_REJECTED
+  SHIFT_ASSIGNED
+  SHIFT_UPDATED
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  companyId String           @map("company_id")
+  userId    String           @map("user_id")
+  type      NotificationType
+  title     String
+  message   String
+  /// Relative app path the notification should link to, e.g. "/my-requests".
+  link      String?
+  readAt    DateTime?        @map("read_at")
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([userId, readAt])
+  @@map("notifications")
 }

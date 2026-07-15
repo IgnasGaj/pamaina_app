@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import * as scheduleService from "@/modules/schedules/schedule.service";
+import * as employeeService from "@/modules/employees/employee.service";
 import {
   CreateAssignmentDto,
   CreateScheduleDto,
@@ -8,6 +9,16 @@ import {
   UpdateScheduleDto,
 } from "@/modules/schedules/schedule.dto";
 import { sendSuccess } from "@/shared/utils/api-response.util";
+
+/**
+ * Plain EMPLOYEE-role accounts may only ever see PUBLISHED schedules, and
+ * only their own assignments within them — never draft schedules, never
+ * other employees' shifts. Mirrors the isSelfServiceOnly pattern already
+ * used in employee.controller.ts.
+ */
+function isSelfServiceOnly(req: Request): boolean {
+  return req.user!.roleKey === "EMPLOYEE";
+}
 
 export async function create(req: Request, res: Response): Promise<void> {
   const schedule = await scheduleService.createSchedule(
@@ -20,6 +31,17 @@ export async function create(req: Request, res: Response): Promise<void> {
 
 export async function getById(req: Request, res: Response): Promise<void> {
   const { id } = req.params as { id: string };
+
+  if (isSelfServiceOnly(req)) {
+    const own = await employeeService.getOwnEmployeeProfileOrThrow(req.user!.companyId!, req.user!.id);
+    const schedule = await scheduleService.getScheduleByIdOrThrow(req.user!.companyId!, id, {
+      restrictToPublished: true,
+      restrictToEmployeeId: own.id,
+    });
+    sendSuccess(res, schedule);
+    return;
+  }
+
   const schedule = await scheduleService.getScheduleByIdOrThrow(req.user!.companyId!, id);
   sendSuccess(res, schedule);
 }
@@ -37,7 +59,9 @@ export async function update(req: Request, res: Response): Promise<void> {
 
 export async function list(req: Request, res: Response): Promise<void> {
   const query = req.query as unknown as ListSchedulesQuery;
-  const result = await scheduleService.listSchedules(req.user!.companyId!, query);
+  const result = await scheduleService.listSchedules(req.user!.companyId!, query, {
+    restrictToPublished: isSelfServiceOnly(req),
+  });
   sendSuccess(res, result.items, 200, { pagination: result.meta });
 }
 

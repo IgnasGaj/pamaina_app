@@ -1,6 +1,8 @@
 import { memo, useState } from 'react'
 
+import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Textarea } from '@/components/ui/textarea'
 import type { AbsenceType } from '@/types/absence-type.types'
 import type { ScheduleAssignment } from '@/types/schedule.types'
 import type { ShiftTemplate } from '@/types/shift-template.types'
@@ -11,6 +13,8 @@ export interface CellActionParams {
   assignmentId?: string
   shiftTemplateId: string | null
   absenceTypeId: string | null
+  /** Only set when saving a note on an existing assignment — omitted (not touched) for plain shift/absence selection. */
+  notes?: string | null
 }
 
 interface ScheduleCellProps {
@@ -62,7 +66,15 @@ function ScheduleCellComponent({
   onAction,
 }: ScheduleCellProps) {
   const [open, setOpen] = useState(false)
+  const [notesDraft, setNotesDraft] = useState(assignment?.notes ?? '')
   const isInteractive = !disabled
+
+  function handleOpenChange(nextOpen: boolean) {
+    if (nextOpen) {
+      setNotesDraft(assignment?.notes ?? '')
+    }
+    setOpen(nextOpen)
+  }
 
   const entryLabel = shiftTemplate
     ? `${shiftTemplate.name} (${shiftTemplate.startTime}-${shiftTemplate.endTime})`
@@ -93,6 +105,19 @@ function ScheduleCellComponent({
     setOpen(false)
   }
 
+  function handleSaveNotes() {
+    if (!assignment) return
+    onAction({
+      employeeId,
+      date,
+      assignmentId: assignment.id,
+      shiftTemplateId: assignment.shiftTemplateId,
+      absenceTypeId: assignment.absenceTypeId,
+      notes: notesDraft.trim() || null,
+    })
+    setOpen(false)
+  }
+
   const color = shiftTemplate?.color ?? absenceType?.color
   const cellStyle = color ? { backgroundColor: color, color: getContrastTextColor(color) } : undefined
   const label = shiftTemplate ? shiftTemplate.shortCode : absenceType ? absenceShortLabel(absenceType.name) : ''
@@ -116,7 +141,7 @@ function ScheduleCellComponent({
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
       <PopoverContent className="w-56 p-1" align="center">
         <div className="flex flex-col">
@@ -168,13 +193,31 @@ function ScheduleCellComponent({
           ))}
 
           {assignment && (
-            <button
-              type="button"
-              className="mt-1 rounded border-t border-border px-2 py-1.5 pt-2 text-left text-sm text-destructive hover:bg-accent"
-              onClick={handleClear}
-            >
-              Clear
-            </button>
+            <>
+              <button
+                type="button"
+                className="mt-1 rounded border-t border-border px-2 py-1.5 pt-2 text-left text-sm text-destructive hover:bg-accent"
+                onClick={handleClear}
+              >
+                Clear
+              </button>
+              <div className="mt-1 border-t border-border px-2 pt-2">
+                <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor={`notes-${assignment.id}`}>
+                  Note (visible to employee)
+                </label>
+                <Textarea
+                  id={`notes-${assignment.id}`}
+                  value={notesDraft}
+                  onChange={(e) => setNotesDraft(e.target.value)}
+                  placeholder="e.g. Bring forklift license"
+                  rows={2}
+                  className="text-sm"
+                />
+                <Button size="sm" className="mt-1.5 w-full" onClick={handleSaveNotes}>
+                  Save note
+                </Button>
+              </div>
+            </>
           )}
         </div>
       </PopoverContent>

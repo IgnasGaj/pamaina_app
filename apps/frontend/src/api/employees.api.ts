@@ -5,6 +5,7 @@ import type {
   Employee,
   ListEmployeesQuery,
   UpdateEmployeePayload,
+  UpdateOwnProfilePayload,
 } from '@/types/employee.types'
 
 export function listEmployees(query: ListEmployeesQuery = {}): Promise<PaginatedResult<Employee>> {
@@ -13,6 +14,14 @@ export function listEmployees(query: ListEmployeesQuery = {}): Promise<Paginated
 
 export function getEmployee(id: string): Promise<Employee> {
   return unwrap(apiClient.get(`/employees/${id}`))
+}
+
+export function getOwnEmployee(): Promise<Employee> {
+  return unwrap(apiClient.get('/employees/me'))
+}
+
+export function updateOwnEmployee(payload: UpdateOwnProfilePayload): Promise<Employee> {
+  return unwrap(apiClient.patch('/employees/me', payload))
 }
 
 export function createEmployee(payload: CreateEmployeePayload): Promise<Employee> {

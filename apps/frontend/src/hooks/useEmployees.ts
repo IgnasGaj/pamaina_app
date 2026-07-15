@@ -4,11 +4,18 @@ import {
   archiveEmployee,
   createEmployee,
   getEmployee,
+  getOwnEmployee,
   listEmployees,
   restoreEmployee,
   updateEmployee,
+  updateOwnEmployee,
 } from '@/api/employees.api'
-import type { CreateEmployeePayload, ListEmployeesQuery, UpdateEmployeePayload } from '@/types/employee.types'
+import type {
+  CreateEmployeePayload,
+  ListEmployeesQuery,
+  UpdateEmployeePayload,
+  UpdateOwnProfilePayload,
+} from '@/types/employee.types'
 
 export const employeeKeys = {
   all: ['employees'] as const,
@@ -16,6 +23,24 @@ export const employeeKeys = {
   list: (query: ListEmployeesQuery) => [...employeeKeys.lists(), query] as const,
   details: () => [...employeeKeys.all, 'detail'] as const,
   detail: (id: string) => [...employeeKeys.details(), id] as const,
+  me: () => [...employeeKeys.all, 'me'] as const,
+}
+
+export function useOwnEmployeeProfile() {
+  return useQuery({
+    queryKey: employeeKeys.me(),
+    queryFn: () => getOwnEmployee(),
+  })
+}
+
+export function useUpdateOwnEmployeeProfile() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: UpdateOwnProfilePayload) => updateOwnEmployee(payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: employeeKeys.me() })
+    },
+  })
 }
 
 export function useEmployees(query: ListEmployeesQuery = {}) {

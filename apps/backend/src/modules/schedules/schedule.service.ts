@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { prisma } from "@/config/prisma";
 import { scheduleRepository } from "@/modules/schedules/schedule.repository";
 import { scheduleAssignmentRepository } from "@/modules/schedules/schedule-assignment.repository";
 import { toAssignmentResponseDto, toScheduleResponseDto, toScheduleSummaryDto } from "@/modules/schedules/schedule.mapper";
@@ -15,9 +16,22 @@ import {
 import { employeeRepository, EmployeeWithRelations } from "@/modules/employees/employee.repository";
 import { shiftTemplateRepository } from "@/modules/shift-templates/shift-template.repository";
 import { absenceTypeRepository } from "@/modules/absence-types/absence-type.repository";
+import { notifyUser, notifyUsers } from "@/modules/notifications/notification.service";
 import { BadRequestError, ConflictError, NotFoundError } from "@/shared/errors";
 import { PaginatedResult } from "@/shared/types/pagination.types";
 import { buildPaginatedResult } from "@/shared/utils/pagination.util";
+
+function toDateOnly(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+/** Scoping applied for self-service EMPLOYEE-role callers — see schedule.controller.ts. */
+export interface ScheduleAccessOptions {
+  /** Employees may only ever see PUBLISHED schedules; drafts must appear as if they don't exist. */
+  restrictToPublished?: boolean;
+  /** Employees may only see their own assignments within an otherwise-visible schedule. */
+  restrictToEmployeeId?: string;
+}
 
 function daysInMonth(year: number, month: number): number {
   return new Date(Date.UTC(year, month, 0)).getUTCDate();
@@ -107,10 +121,24 @@ export async function createSchedule(
   return toScheduleResponseDto(schedule);
 }
 
-export async function getScheduleByIdOrThrow(companyId: string, id: string): Promise<ScheduleResponseDto> {
+export async function getScheduleByIdOrThrow(
+  companyId: string,
+  id: string,
+  options: ScheduleAccessOptions = {},
+): Promise<ScheduleResponseDto> {
   const schedule = await scheduleRepository.findByIdInCompany(id, companyId);
   if (!schedule) {
     throw new NotFoundError("Schedule");
+  }
+  // A draft schedule must be indistinguishable from a non-existent one to an
+  // employee — NotFound, not Forbidden, so its existence isn't leaked.
+  if (options.restrictToPublished && schedule.status !== "PUBLISHED") {
+    throw new NotFoundError("Schedule");
+  }
+  if (options.restrictToEmployeeId) {
+    schedule.assignments = schedule.assignments.filter(
+      (assignment) => assignment.employeeId === options.restrictToEmployeeId,
+    );
   }
   return toScheduleResponseDto(schedule);
 }
@@ -147,9 +175,17 @@ export async function updateSchedule(
 export async function listSchedules(
   companyId: string,
   query: ListSchedulesQuery,
+  options: ScheduleAccessOptions = {},
 ): Promise<PaginatedResult<ScheduleSummaryDto>> {
   const { items, total } = await scheduleRepository.findMany(
-    { companyId, year: query.year, month: query.month, status: query.status },
+    {
+      companyId,
+      year: query.year,
+      month: query.month,
+      // Forced regardless of the requested status — an employee can never
+      // list draft schedules, even by asking for status=DRAFT explicitly.
+      status: options.restrictToPublished ? "PUBLISHED" : query.status,
+    },
     query,
   );
   return buildPaginatedResult(items.map(toScheduleSummaryDto), query, total);
@@ -168,6 +204,29 @@ export async function publishSchedule(companyId: string, userId: string, id: str
     publishedAt: new Date(),
     updater: { connect: { id: userId } },
   });
+
+  const employeeIds = [...new Set(updated.assignments.map((assignment) => assignment.employeeId))];
+  if (employeeIds.length > 0) {
+    const employees = await prisma.employee.findMany({
+      where: { id: { in: employeeIds } },
+      select: { userId: true },
+    });
+    const recipientUserIds = employees
+      .map((employee) => employee.userId)
+      .filter((userIdValue): userIdValue is string => Boolean(userIdValue));
+
+    await notifyUsers(
+      recipientUserIds.map((recipientUserId) => ({
+        companyId,
+        userId: recipientUserId,
+        type: "SCHEDULE_PUBLISHED",
+        title: "Schedule published",
+        message: `The schedule for ${updated.year}-${String(updated.month).padStart(2, "0")} has been published.`,
+        link: "/my-schedule",
+      })),
+    );
+  }
+
   return toScheduleResponseDto(updated);
 }
 
@@ -271,6 +330,20 @@ export async function createAssignment(
     updatedBy: userId,
   });
   await scheduleRepository.touchUpdatedBy(dto.scheduleId, userId);
+
+  // Only notify once the schedule is actually visible to the employee —
+  // adding shifts to a still-unpublished draft must stay silent.
+  if (schedule.status === "PUBLISHED" && created.employee.userId) {
+    await notifyUser({
+      companyId,
+      userId: created.employee.userId,
+      type: "SHIFT_ASSIGNED",
+      title: "New shift assigned",
+      message: `You have a new shift on ${toDateOnly(dto.date)}.`,
+      link: "/my-schedule",
+    });
+  }
+
   return toAssignmentResponseDto(created);
 }
 
@@ -299,6 +372,18 @@ export async function updateAssignment(
     updater: { connect: { id: userId } },
   });
   await scheduleRepository.touchUpdatedBy(existing.scheduleId, userId);
+
+  if (existing.schedule.status === "PUBLISHED" && updated.employee.userId) {
+    await notifyUser({
+      companyId,
+      userId: updated.employee.userId,
+      type: "SHIFT_UPDATED",
+      title: "Shift updated",
+      message: `Your shift on ${toDateOnly(updated.date)} was updated.`,
+      link: "/my-schedule",
+    });
+  }
+
   return toAssignmentResponseDto(updated);
 }
 

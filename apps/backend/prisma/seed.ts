@@ -38,6 +38,9 @@ const PERMISSION_DESCRIPTIONS: Record<string, string> = {
   "absence_type.delete": "Archive or restore absence types",
   "working_time.read": "View required-hours calculations and holidays",
   "working_time.manage": "Manage company-specific non-working days",
+  "request.create": "Submit absence/leave requests",
+  "request.read": "View absence/leave requests",
+  "request.manage": "Approve or reject absence/leave requests",
 };
 
 async function seedPermissions(): Promise<void> {

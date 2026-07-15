@@ -125,7 +125,11 @@ export function SchedulerPage() {
         updateMutate(
           {
             id: params.assignmentId,
-            payload: { shiftTemplateId: params.shiftTemplateId, absenceTypeId: params.absenceTypeId },
+            payload: {
+              shiftTemplateId: params.shiftTemplateId,
+              absenceTypeId: params.absenceTypeId,
+              notes: params.notes,
+            },
           },
           { onError },
         )

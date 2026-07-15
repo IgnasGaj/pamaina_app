@@ -50,6 +50,9 @@ export const SYSTEM_ROLE_DEFINITIONS: Record<
       PERMISSIONS.ABSENCE_TYPE_DELETE,
       PERMISSIONS.WORKING_TIME_READ,
       PERMISSIONS.WORKING_TIME_MANAGE,
+      PERMISSIONS.REQUEST_CREATE,
+      PERMISSIONS.REQUEST_READ,
+      PERMISSIONS.REQUEST_MANAGE,
     ],
   },
   MANAGER: {
@@ -76,11 +79,14 @@ export const SYSTEM_ROLE_DEFINITIONS: Record<
       PERMISSIONS.ABSENCE_TYPE_DELETE,
       PERMISSIONS.WORKING_TIME_READ,
       PERMISSIONS.WORKING_TIME_MANAGE,
+      PERMISSIONS.REQUEST_CREATE,
+      PERMISSIONS.REQUEST_READ,
+      PERMISSIONS.REQUEST_MANAGE,
     ],
   },
   EMPLOYEE: {
     name: "Employee",
-    description: "Standard employee with read-only access to their own data.",
+    description: "Standard employee with access limited to their own data.",
     permissions: [
       PERMISSIONS.EMPLOYEE_READ,
       PERMISSIONS.DEPARTMENT_READ,
@@ -88,6 +94,13 @@ export const SYSTEM_ROLE_DEFINITIONS: Record<
       PERMISSIONS.SHIFT_TEMPLATE_READ,
       PERMISSIONS.ABSENCE_TYPE_READ,
       PERMISSIONS.WORKING_TIME_READ,
+      // Row-level scoping (own record / published-only / own assignments)
+      // is enforced in each module's controller, not by this permission set
+      // alone — see isSelfServiceOnly() in employee.controller.ts and
+      // schedule.controller.ts.
+      PERMISSIONS.SCHEDULE_READ,
+      PERMISSIONS.REQUEST_CREATE,
+      PERMISSIONS.REQUEST_READ,
     ],
   },
 };

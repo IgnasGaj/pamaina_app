@@ -37,8 +37,9 @@ export function LoginPage() {
 
   async function onSubmit(values: LoginFormValues) {
     try {
-      await login.mutateAsync(values)
-      const redirectTo = (location.state as { from?: { pathname: string } } | null)?.from?.pathname ?? '/'
+      const session = await login.mutateAsync(values)
+      const defaultPath = session.user.roleKey === 'EMPLOYEE' ? '/my-dashboard' : '/'
+      const redirectTo = (location.state as { from?: { pathname: string } } | null)?.from?.pathname ?? defaultPath
       void navigate(redirectTo, { replace: true })
     } catch (error) {
       toast.error(getErrorMessage(error))

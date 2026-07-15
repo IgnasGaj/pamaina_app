@@ -56,6 +56,12 @@ export interface UpdateEmployeePayload {
   status?: Extract<EmployeeStatus, 'ACTIVE' | 'INACTIVE'>
 }
 
+/** Self-service "my profile" update — every other Employee field is manager-only. */
+export interface UpdateOwnProfilePayload {
+  email?: string | null
+  phone?: string | null
+}
+
 export interface ListEmployeesQuery {
   page?: number
   pageSize?: number

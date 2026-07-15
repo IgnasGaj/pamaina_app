@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useLogout } from '@/hooks/useAuth'
 import { useAuthStore } from '@/stores/auth.store'
+import { NotificationBell } from '@/components/layout/NotificationBell'
 
 function getInitials(firstName: string, lastName: string): string {
   return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase()
@@ -33,28 +34,31 @@ export function Topbar() {
     <header className="flex h-14 items-center justify-between border-b border-border bg-background px-6">
       <div className="text-sm text-muted-foreground">{user.roleName}</div>
 
-      <DropdownMenu>
-        <DropdownMenuTrigger className="flex items-center gap-2 rounded-md px-2 py-1 text-sm outline-none hover:bg-accent">
-          <Avatar className="size-7">
-            <AvatarFallback>{getInitials(user.firstName, user.lastName)}</AvatarFallback>
-          </Avatar>
-          <span className="font-medium">
-            {user.firstName} {user.lastName}
-          </span>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
-          <DropdownMenuLabel>{user.email}</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem disabled>
-            <UserIcon />
-            My profile
-          </DropdownMenuItem>
-          <DropdownMenuItem variant="destructive" onClick={() => void handleLogout()}>
-            <LogOut />
-            Sign out
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <div className="flex items-center gap-1">
+        <NotificationBell />
+        <DropdownMenu>
+          <DropdownMenuTrigger className="flex items-center gap-2 rounded-md px-2 py-1 text-sm outline-none hover:bg-accent">
+            <Avatar className="size-7">
+              <AvatarFallback>{getInitials(user.firstName, user.lastName)}</AvatarFallback>
+            </Avatar>
+            <span className="font-medium">
+              {user.firstName} {user.lastName}
+            </span>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel>{user.email}</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem disabled>
+              <UserIcon />
+              My profile
+            </DropdownMenuItem>
+            <DropdownMenuItem variant="destructive" onClick={() => void handleLogout()}>
+              <LogOut />
+              Sign out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     </header>
   )
 }

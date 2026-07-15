@@ -1,6 +1,11 @@
 import { Request, Response } from "express";
 import * as employeeService from "@/modules/employees/employee.service";
-import { CreateEmployeeDto, ListEmployeesQuery, UpdateEmployeeDto } from "@/modules/employees/employee.dto";
+import {
+  CreateEmployeeDto,
+  ListEmployeesQuery,
+  UpdateEmployeeDto,
+  UpdateOwnProfileDto,
+} from "@/modules/employees/employee.dto";
 import { sendSuccess } from "@/shared/utils/api-response.util";
 import { ForbiddenError } from "@/shared/errors";
 
@@ -17,6 +22,23 @@ function isSelfServiceOnly(req: Request): boolean {
 export async function create(req: Request, res: Response): Promise<void> {
   const employee = await employeeService.createEmployee(req.user!.companyId!, req.body as CreateEmployeeDto);
   sendSuccess(res, employee, 201);
+}
+
+/** No id param needed — resolves the caller's own linked Employee record directly. */
+export async function getOwnProfile(req: Request, res: Response): Promise<void> {
+  const own = await employeeService.getOwnEmployeeProfileOrThrow(req.user!.companyId!, req.user!.id);
+  sendSuccess(res, own);
+}
+
+/** Restricted to phone/email — every other field on the Employee record is manager-only. */
+export async function updateOwnProfile(req: Request, res: Response): Promise<void> {
+  const own = await employeeService.getOwnEmployeeProfileOrThrow(req.user!.companyId!, req.user!.id);
+  const dto = req.body as UpdateOwnProfileDto;
+  const employee = await employeeService.updateEmployee(req.user!.companyId!, own.id, {
+    email: dto.email,
+    phone: dto.phone,
+  });
+  sendSuccess(res, employee);
 }
 
 export async function getById(req: Request, res: Response): Promise<void> {

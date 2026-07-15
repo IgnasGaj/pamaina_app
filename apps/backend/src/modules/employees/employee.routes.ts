@@ -9,12 +9,24 @@ import {
   employeeIdParamsSchema,
   listEmployeesQuerySchema,
   updateEmployeeSchema,
+  updateOwnProfileSchema,
 } from "@/modules/employees/employee.dto";
 import { PERMISSIONS } from "@/shared/constants/permissions";
 
 const router = Router();
 
 router.use(authenticate, requireCompanyScope);
+
+// Registered before "/:id" so "me" is never matched as an id param. No
+// authorize() gate — these are always scoped to the caller's own linked
+// Employee record, so there's nothing a permission check would add.
+router.get("/me", asyncHandler(async (req, res) => employeeController.getOwnProfile(req, res)));
+
+router.patch(
+  "/me",
+  validate({ body: updateOwnProfileSchema }),
+  asyncHandler(async (req, res) => employeeController.updateOwnProfile(req, res)),
+);
 
 router.get(
   "/",

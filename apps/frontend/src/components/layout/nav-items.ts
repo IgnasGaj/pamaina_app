@@ -3,6 +3,7 @@ import {
   Building2,
   CalendarRange,
   CalendarX,
+  ClipboardList,
   Clock,
   LayoutDashboard,
   Settings,
@@ -40,6 +41,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: Building2,
     permission: [PERMISSIONS.DEPARTMENT_READ, PERMISSIONS.POSITION_READ],
   },
+  { to: '/requests', label: 'Employee requests', icon: ClipboardList, permission: PERMISSIONS.REQUEST_MANAGE },
   { to: '/users', label: 'Team members', icon: UserCog, permission: PERMISSIONS.USER_READ },
   { to: '/settings/company', label: 'Company settings', icon: Settings, roleKey: 'COMPANY_OWNER' },
 ]

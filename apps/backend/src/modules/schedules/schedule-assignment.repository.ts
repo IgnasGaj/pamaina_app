@@ -11,7 +11,7 @@ type Client = PrismaClient | Prisma.TransactionClient;
 const assignmentWithSchedule = Prisma.validator<Prisma.ScheduleAssignmentDefaultArgs>()({
   include: {
     schedule: true,
-    employee: { select: { firstName: true, lastName: true } },
+    employee: { select: { firstName: true, lastName: true, userId: true } },
     updater: { select: { firstName: true, lastName: true } },
   },
 });

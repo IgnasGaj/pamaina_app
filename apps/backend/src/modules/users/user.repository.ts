@@ -75,6 +75,18 @@ export class UserRepository {
   async softDelete(id: string, client: Client = prisma): Promise<void> {
     await client.user.update({ where: { id }, data: { deletedAt: new Date(), isActive: false } });
   }
+
+  /** Active manager/owner accounts in a company — used to fan out "new request submitted" notifications. */
+  async findManagersForCompany(companyId: string, client: Client = prisma): Promise<User[]> {
+    return client.user.findMany({
+      where: {
+        companyId,
+        isActive: true,
+        deletedAt: null,
+        role: { key: { in: ["MANAGER", "COMPANY_OWNER"] } },
+      },
+    });
+  }
 }
 
 export const userRepository = new UserRepository();

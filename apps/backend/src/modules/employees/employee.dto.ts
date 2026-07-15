@@ -62,6 +62,13 @@ export const employeeIdParamsSchema = z.object({
   id: z.string().uuid(),
 });
 
+/** Self-service "my profile" update — every other Employee field is manager-only. */
+export const updateOwnProfileSchema = z.object({
+  email: z.string().email().nullable().optional(),
+  phone: z.string().max(30).nullable().optional(),
+});
+export type UpdateOwnProfileDto = z.infer<typeof updateOwnProfileSchema>;
+
 export const listEmployeesQuerySchema = paginationQuerySchema.extend({
   search: z.string().trim().min(1).max(200).optional(),
   status: z.nativeEnum(EmployeeStatus).optional(),

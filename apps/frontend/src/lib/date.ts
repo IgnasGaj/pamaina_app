@@ -21,6 +21,12 @@ const WEEKDAY_SHORT: Record<AppLocale, string[]> = {
   en: ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'],
 }
 
+/** Monday-first full weekday names, for single-day headers (e.g. the mobile Day View). */
+const WEEKDAY_FULL: Record<AppLocale, string[]> = {
+  lt: ['Pirmadienis', 'Antradienis', 'Trečiadienis', 'Ketvirtadienis', 'Penktadienis', 'Šeštadienis', 'Sekmadienis'],
+  en: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+}
+
 export function getMonthNames(locale: AppLocale): string[] {
   return MONTH_NAMES[locale]
 }
@@ -28,6 +34,11 @@ export function getMonthNames(locale: AppLocale): string[] {
 /** Monday-first weekday abbreviations, e.g. index 0 = Monday. */
 export function getWeekdayShortLabels(locale: AppLocale): string[] {
   return WEEKDAY_SHORT[locale]
+}
+
+/** Monday-first full weekday names, e.g. index 0 = Monday. */
+export function getWeekdayFullLabels(locale: AppLocale): string[] {
+  return WEEKDAY_FULL[locale]
 }
 
 /** 1 (Monday) .. 7 (Sunday) for a "YYYY-MM-DD" key, parsed as a plain calendar date (no timezone shift). */
@@ -57,6 +68,16 @@ export function formatLongDate(dateKeyValue: string, locale: AppLocale): string 
     return `${year} m. ${MONTH_NAMES_GENITIVE_LT[month - 1]} ${day} d.`
   }
   return `${MONTH_NAMES.en[month - 1]} ${day}, ${year}`
+}
+
+/** "2026-07-15" -> "Liepos 15 d." (no year) — used for single-day headers like the mobile Day View. */
+export function formatDayMonth(dateKeyValue: string, locale: AppLocale): string {
+  const [, month, day] = dateKeyValue.split('-').map(Number)
+  if (locale === 'lt') {
+    const genitive = MONTH_NAMES_GENITIVE_LT[month - 1]
+    return `${genitive.charAt(0).toUpperCase()}${genitive.slice(1)} ${day} d.`
+  }
+  return `${MONTH_NAMES.en[month - 1]} ${day}`
 }
 
 /** Same as formatLongDate but also appends a 24-hour "HH:mm" time, for full ISO timestamps. */

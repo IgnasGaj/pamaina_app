@@ -410,6 +410,9 @@
     "myRequestsTitle": "My requests",
     "myRequestsDescription": "Vacation, sick leave, and other absence requests.",
     "noneYet": "No requests yet. Tap + to submit your first one.",
+    "chooseType": "Choose a request type",
+    "other": "Other",
+    "history": "History",
     "managerNotePrefix": "Manager note: {{note}}",
     "cancel": "Cancel",
     "cancelRequestTitle": "Cancel request",
@@ -442,7 +445,13 @@
     "off": "Off",
     "loadingDashboard": "Loading your dashboard…",
     "noProfileFound": "No employee profile found for this account.",
-    "loadingSchedule": "Loading schedule…"
+    "loadingSchedule": "Loading schedule…",
+    "workingStatus": "Working",
+    "statusTitle": "Today's status",
+    "todayShiftTitle": "Today's shift",
+    "managerNote": "Manager note",
+    "latestNotifications": "Latest notifications",
+    "noAssignment": "No shift scheduled for this day."
   },
   "profile": {
     "title": "My profile",
@@ -453,7 +462,11 @@
     "currentPassword": "Current password",
     "changePassword": "Change password",
     "changing": "Changing…",
-    "passwordChanged": "Password changed. Please sign in again."
+    "passwordChanged": "Password changed. Please sign in again.",
+    "employmentInfo": "Employment information",
+    "logout": "Log out",
+    "logoutConfirmTitle": "Log out?",
+    "logoutConfirmDescription": "Are you sure you want to log out of your account?"
   },
   "notifications": {
     "schedulePublished": "Schedule published",

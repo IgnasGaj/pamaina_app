@@ -27,6 +27,7 @@ import { EmployeeDashboardPage } from '@/pages/portal/EmployeeDashboardPage'
 import { MySchedulePage } from '@/pages/portal/MySchedulePage'
 import { MyRequestsPage } from '@/pages/portal/MyRequestsPage'
 import { MyProfilePage } from '@/pages/portal/MyProfilePage'
+import { NotificationsPage } from '@/pages/portal/NotificationsPage'
 import { ForbiddenPage } from '@/pages/errors/ForbiddenPage'
 import { NotFoundPage } from '@/pages/errors/NotFoundPage'
 import { PERMISSIONS } from '@/types/auth.types'
@@ -109,6 +110,7 @@ export const router = createBrowserRouter([
                   { path: 'my-schedule', element: <MySchedulePage /> },
                   { path: 'my-requests', element: <MyRequestsPage /> },
                   { path: 'my-profile', element: <MyProfilePage /> },
+                  { path: 'my-notifications', element: <NotificationsPage /> },
                 ],
               },
             ],

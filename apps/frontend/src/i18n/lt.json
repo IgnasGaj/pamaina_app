@@ -410,6 +410,9 @@
     "myRequestsTitle": "Mano prašymai",
     "myRequestsDescription": "Atostogos, nedarbingumas ir kiti nebuvimo prašymai.",
     "noneYet": "Prašymų dar nėra. Paspauskite +, kad pateiktumėte pirmąjį.",
+    "chooseType": "Pasirinkite prašymo tipą",
+    "other": "Kita",
+    "history": "Istorija",
     "managerNotePrefix": "Vadovo pastaba: {{note}}",
     "cancel": "Atšaukti",
     "cancelRequestTitle": "Atšaukti prašymą",
@@ -442,7 +445,13 @@
     "off": "Laisva",
     "loadingDashboard": "Kraunamas jūsų skydelis…",
     "noProfileFound": "Šiai paskyrai darbuotojo profilio nerasta.",
-    "loadingSchedule": "Kraunamas grafikas…"
+    "loadingSchedule": "Kraunamas grafikas…",
+    "workingStatus": "Dirbate",
+    "statusTitle": "Šiandienos būsena",
+    "todayShiftTitle": "Šiandienos pamaina",
+    "managerNote": "Vadovo pastaba",
+    "latestNotifications": "Naujausi pranešimai",
+    "noAssignment": "Šią dieną pamaina neplanuota."
   },
   "profile": {
     "title": "Mano profilis",
@@ -453,7 +462,11 @@
     "currentPassword": "Dabartinis slaptažodis",
     "changePassword": "Keisti slaptažodį",
     "changing": "Keičiama…",
-    "passwordChanged": "Slaptažodis pakeistas. Prisijunkite iš naujo."
+    "passwordChanged": "Slaptažodis pakeistas. Prisijunkite iš naujo.",
+    "employmentInfo": "Darbo informacija",
+    "logout": "Atsijungti",
+    "logoutConfirmTitle": "Atsijungti?",
+    "logoutConfirmDescription": "Ar tikrai norite atsijungti iš savo paskyros?"
   },
   "notifications": {
     "schedulePublished": "Grafikas paskelbtas",

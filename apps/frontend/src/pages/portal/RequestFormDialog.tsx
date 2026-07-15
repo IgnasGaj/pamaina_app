@@ -1,18 +1,13 @@
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useEffect } from 'react'
+import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { Controller, useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
 
+import { BottomSheet } from '@/components/portal/BottomSheet'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -38,7 +33,14 @@ function useRequestSchema() {
 
 type RequestFormValues = { absenceTypeId: string; startDate: string; endDate: string; comment?: string }
 
-export function RequestFormDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+interface RequestFormDialogProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  /** Preselects the type when opened from one of the large request-type tiles. */
+  initialAbsenceTypeId?: string
+}
+
+export function RequestFormDialog({ open, onOpenChange, initialAbsenceTypeId }: RequestFormDialogProps) {
   const { t } = useTranslation()
   const requestSchema = useRequestSchema()
   const absenceTypesQuery = useAbsenceTypes({ pageSize: 100, status: 'ACTIVE' })
@@ -55,6 +57,12 @@ export function RequestFormDialog({ open, onOpenChange }: { open: boolean; onOpe
     defaultValues: { absenceTypeId: '', startDate: '', endDate: '', comment: '' },
   })
 
+  useEffect(() => {
+    if (open) {
+      reset({ absenceTypeId: initialAbsenceTypeId ?? '', startDate: '', endDate: '', comment: '' })
+    }
+  }, [open, initialAbsenceTypeId, reset])
+
   async function onSubmit(values: RequestFormValues) {
     try {
       await createRequest.mutateAsync({
@@ -64,7 +72,6 @@ export function RequestFormDialog({ open, onOpenChange }: { open: boolean; onOpe
         comment: values.comment || undefined,
       })
       toast.success(t('requests.requestSubmitted'))
-      reset({ absenceTypeId: '', startDate: '', endDate: '', comment: '' })
       onOpenChange(false)
     } catch (error) {
       toast.error(getErrorMessage(error))
@@ -74,65 +81,58 @@ export function RequestFormDialog({ open, onOpenChange }: { open: boolean; onOpe
   const absenceTypes = absenceTypesQuery.data?.items ?? []
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{t('requests.newRequest')}</DialogTitle>
-          <DialogDescription>{t('requests.newRequestDescription')}</DialogDescription>
-        </DialogHeader>
-        <form className="space-y-4" onSubmit={(e) => void handleSubmit(onSubmit)(e)}>
+    <BottomSheet open={open} onOpenChange={onOpenChange} closeLabel={t('common.close')}>
+      <DialogPrimitive.Title className="text-lg font-semibold">{t('requests.newRequest')}</DialogPrimitive.Title>
+      <DialogPrimitive.Description className="mb-4 text-sm text-muted-foreground">
+        {t('requests.newRequestDescription')}
+      </DialogPrimitive.Description>
+      <form className="space-y-4" onSubmit={(e) => void handleSubmit(onSubmit)(e)}>
+        <div className="space-y-2">
+          <Label>{t('requests.type')}</Label>
+          <Controller
+            control={control}
+            name="absenceTypeId"
+            render={({ field }) => (
+              <Select value={field.value} onValueChange={field.onChange}>
+                <SelectTrigger className="h-12 w-full text-base">
+                  <SelectValue placeholder={t('requests.selectType')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {absenceTypes.map((absenceType) => (
+                    <SelectItem key={absenceType.id} value={absenceType.id}>
+                      {absenceType.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
+          {errors.absenceTypeId && <p className="text-sm text-destructive">{errors.absenceTypeId.message}</p>}
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
-            <Label>{t('requests.type')}</Label>
-            <Controller
-              control={control}
-              name="absenceTypeId"
-              render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder={t('requests.selectType')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {absenceTypes.map((absenceType) => (
-                      <SelectItem key={absenceType.id} value={absenceType.id}>
-                        {absenceType.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            />
-            {errors.absenceTypeId && <p className="text-sm text-destructive">{errors.absenceTypeId.message}</p>}
+            <Label htmlFor="startDate">{t('requests.startDate')}</Label>
+            <Input id="startDate" type="date" className="h-12 text-base" {...register('startDate')} />
+            {errors.startDate && <p className="text-sm text-destructive">{errors.startDate.message}</p>}
           </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="startDate">{t('requests.startDate')}</Label>
-              <Input id="startDate" type="date" {...register('startDate')} />
-              {errors.startDate && <p className="text-sm text-destructive">{errors.startDate.message}</p>}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="endDate">{t('requests.endDate')}</Label>
-              <Input id="endDate" type="date" {...register('endDate')} />
-              {errors.endDate && <p className="text-sm text-destructive">{errors.endDate.message}</p>}
-            </div>
-          </div>
-
           <div className="space-y-2">
-            <Label htmlFor="comment">{t('requests.commentOptional')}</Label>
-            <Textarea id="comment" rows={3} {...register('comment')} />
-            {errors.comment && <p className="text-sm text-destructive">{errors.comment.message}</p>}
+            <Label htmlFor="endDate">{t('requests.endDate')}</Label>
+            <Input id="endDate" type="date" className="h-12 text-base" {...register('endDate')} />
+            {errors.endDate && <p className="text-sm text-destructive">{errors.endDate.message}</p>}
           </div>
+        </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              {t('common.cancel')}
-            </Button>
-            <Button type="submit" disabled={createRequest.isPending}>
-              {createRequest.isPending ? t('requests.submitting') : t('requests.submitRequest')}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+        <div className="space-y-2">
+          <Label htmlFor="comment">{t('requests.commentOptional')}</Label>
+          <Textarea id="comment" rows={3} {...register('comment')} />
+          {errors.comment && <p className="text-sm text-destructive">{errors.comment.message}</p>}
+        </div>
+
+        <Button type="submit" className="h-12 w-full text-base" disabled={createRequest.isPending}>
+          {createRequest.isPending ? t('requests.submitting') : t('requests.submitRequest')}
+        </Button>
+      </form>
+    </BottomSheet>
   )
 }

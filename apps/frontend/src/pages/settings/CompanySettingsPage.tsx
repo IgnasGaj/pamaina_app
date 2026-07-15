@@ -2,6 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
 
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -13,19 +14,32 @@ import { useCompany, useUpdateCompany } from '@/hooks/useCompany'
 import { getErrorMessage } from '@/lib/errors'
 import { useAuthStore } from '@/stores/auth.store'
 
-const companySchema = z.object({
-  name: z.string().min(2, 'Company name is too short').max(200),
-  email: z.string().email('Enter a valid email address'),
-  phone: z.string().max(30).optional().or(z.literal('')),
-  address: z.string().max(300).optional().or(z.literal('')),
-  city: z.string().max(120).optional().or(z.literal('')),
-  legalCode: z.string().max(50).optional().or(z.literal('')),
-  vatCode: z.string().max(50).optional().or(z.literal('')),
-})
+function useCompanySchema() {
+  const { t } = useTranslation()
+  return z.object({
+    name: z.string().min(2, t('auth.validation.companyNameTooShort')).max(200),
+    email: z.string().email(t('auth.validation.emailRequired')),
+    phone: z.string().max(30).optional().or(z.literal('')),
+    address: z.string().max(300).optional().or(z.literal('')),
+    city: z.string().max(120).optional().or(z.literal('')),
+    legalCode: z.string().max(50).optional().or(z.literal('')),
+    vatCode: z.string().max(50).optional().or(z.literal('')),
+  })
+}
 
-type CompanyFormValues = z.infer<typeof companySchema>
+type CompanyFormValues = {
+  name: string
+  email: string
+  phone?: string
+  address?: string
+  city?: string
+  legalCode?: string
+  vatCode?: string
+}
 
 export function CompanySettingsPage() {
+  const { t } = useTranslation()
+  const companySchema = useCompanySchema()
   const user = useAuthStore((state) => state.user)
   const companyQuery = useCompany(user?.companyId ?? undefined)
   const updateCompany = useUpdateCompany(user?.companyId ?? '')
@@ -65,7 +79,7 @@ export function CompanySettingsPage() {
         legalCode: values.legalCode || undefined,
         vatCode: values.vatCode || undefined,
       })
-      toast.success('Company details updated')
+      toast.success(t('settings.companyUpdated'))
     } catch (error) {
       toast.error(getErrorMessage(error))
     }
@@ -73,22 +87,22 @@ export function CompanySettingsPage() {
 
   return (
     <div>
-      <PageHeader title="Company settings" description="Manage your company's profile information." />
+      <PageHeader title={t('settings.companyTitle')} description={t('settings.companyDescription')} />
 
       <Card className="max-w-2xl">
         <CardContent className="pt-6">
           {companyQuery.isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
+            <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
           ) : (
             <form className="space-y-4" onSubmit={(e) => void handleSubmit(onSubmit)(e)}>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Company name</Label>
+                  <Label htmlFor="name">{t('settings.companyName')}</Label>
                   <Input id="name" {...register('name')} />
                   {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="email">Company email</Label>
+                  <Label htmlFor="email">{t('settings.companyEmail')}</Label>
                   <Input id="email" type="email" {...register('email')} />
                   {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
                 </div>
@@ -96,34 +110,34 @@ export function CompanySettingsPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Phone</Label>
+                  <Label htmlFor="phone">{t('common.phone')}</Label>
                   <Input id="phone" {...register('phone')} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="city">City</Label>
+                  <Label htmlFor="city">{t('settings.city')}</Label>
                   <Input id="city" {...register('city')} />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="address">Address</Label>
+                <Label htmlFor="address">{t('settings.address')}</Label>
                 <Input id="address" {...register('address')} />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label htmlFor="legalCode">Legal code</Label>
+                  <Label htmlFor="legalCode">{t('settings.legalCode')}</Label>
                   <Input id="legalCode" {...register('legalCode')} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="vatCode">VAT code</Label>
+                  <Label htmlFor="vatCode">{t('settings.vatCode')}</Label>
                   <Input id="vatCode" {...register('vatCode')} />
                 </div>
               </div>
 
               <div className="flex justify-end">
                 <Button type="submit" disabled={updateCompany.isPending}>
-                  {updateCompany.isPending ? 'Saving…' : 'Save changes'}
+                  {updateCompany.isPending ? t('common.saving') : t('common.saveChanges')}
                 </Button>
               </div>
             </form>

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CalendarDays, ChevronLeft, ChevronRight, Copy, Loader2, Pencil, Plus, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 
 import { PageHeader } from '@/components/layout/PageHeader'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
@@ -26,9 +27,10 @@ import {
   useUpdateAssignment,
 } from '@/hooks/useSchedules'
 import { useShiftTemplates } from '@/hooks/useShiftTemplates'
-import { useMonthlyHoursByEmploymentType } from '@/hooks/useWorkingTime'
+import { useHolidays, useMonthlyHoursByEmploymentType } from '@/hooks/useWorkingTime'
 import { getErrorMessage } from '@/lib/errors'
 import { calculateShiftDurationHours } from '@/lib/monthly-hours'
+import { getMonthNames, type AppLocale } from '@/lib/date'
 import type { EmployeeMonthlyHours } from '@/pages/scheduler/EmployeeRow'
 import { ScheduleGrid } from '@/pages/scheduler/ScheduleGrid'
 import type { CellActionParams } from '@/pages/scheduler/ScheduleCell'
@@ -36,27 +38,16 @@ import { cellKey, dateKey, daysInMonth } from '@/pages/scheduler/schedule-grid.u
 import type { AbsenceType } from '@/types/absence-type.types'
 import type { ScheduleAssignment } from '@/types/schedule.types'
 import type { ShiftTemplate } from '@/types/shift-template.types'
+import type { Holiday } from '@/types/working-time.types'
 
 const NONE_VALUE = '__all__'
-
-const MONTH_LABELS = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-]
 
 type SortBy = 'name' | 'department' | 'position'
 
 export function SchedulerPage() {
+  const { t, i18n } = useTranslation()
+  const locale: AppLocale = i18n.language === 'en' ? 'en' : 'lt'
+  const monthLabels = getMonthNames(locale)
   const today = new Date()
   const [year, setYear] = useState(today.getFullYear())
   const [month, setMonth] = useState(today.getMonth() + 1)
@@ -73,6 +64,7 @@ export function SchedulerPage() {
   const positionsQuery = usePositions({ pageSize: 100 })
   const shiftTemplatesQuery = useShiftTemplates({ pageSize: 100 })
   const absenceTypesQuery = useAbsenceTypes({ pageSize: 100 })
+  const holidaysQuery = useHolidays({ year, month })
   // The Scheduler never computes required hours itself — it asks the
   // Lithuanian Working Time Engine once per employment type (max 4 calls)
   // and maps each employee to their type's result. See useWorkingTime.ts.
@@ -190,6 +182,14 @@ export function SchedulerPage() {
     [absenceTypesQuery.data],
   )
 
+  const holidaysByDate = useMemo(() => {
+    const map = new Map<string, Holiday>()
+    for (const holiday of holidaysQuery.data ?? []) {
+      map.set(holiday.date, holiday)
+    }
+    return map
+  }, [holidaysQuery.data])
+
   // Structural memoization: only employees whose assigned/required numbers
   // actually changed get a new result object. Combined with ScheduleCell's
   // own memo, this is what keeps a single shift edit from re-rendering the
@@ -274,7 +274,7 @@ export function SchedulerPage() {
   async function handleCreateSchedule() {
     try {
       await createSchedule.mutateAsync({ year, month })
-      toast.success('Draft schedule created')
+      toast.success(t('scheduler.draftCreated'))
     } catch (error) {
       toast.error(getErrorMessage(error))
     }
@@ -283,7 +283,7 @@ export function SchedulerPage() {
   async function handlePublish() {
     try {
       await publishSchedule.mutateAsync()
-      toast.success('Schedule published')
+      toast.success(t('scheduler.schedulePublished'))
     } catch (error) {
       toast.error(getErrorMessage(error))
     }
@@ -294,7 +294,7 @@ export function SchedulerPage() {
     try {
       const updated = await copyPreviousMonth.mutateAsync()
       const copied = updated.assignments.length - before
-      toast.success(copied > 0 ? `Copied ${copied} shift(s) from last month` : 'No shifts found in the previous month')
+      toast.success(copied > 0 ? t('scheduler.copiedShifts', { count: copied }) : t('scheduler.noShiftsToCopy'))
     } catch (error) {
       toast.error(getErrorMessage(error))
     }
@@ -303,7 +303,7 @@ export function SchedulerPage() {
   async function handleSave() {
     try {
       await scheduleQuery.refetch()
-      toast.success('All changes saved')
+      toast.success(t('scheduler.changesSaved'))
     } catch (error) {
       toast.error(getErrorMessage(error))
     }
@@ -316,48 +316,49 @@ export function SchedulerPage() {
 
   const isPublished = schedule?.status === 'PUBLISHED'
   const isEditable = Boolean(schedule) && (!isPublished || editingUnlocked)
+  const isCurrentMonth = year === today.getFullYear() && month === today.getMonth() + 1
 
   return (
     <div>
       <PageHeader
-        title="Monthly scheduler"
-        description="Build and publish your team's monthly work schedule."
+        title={t('scheduler.title')}
+        description={t('scheduler.description')}
         actions={
           schedule && (
             <div className="flex items-center gap-2">
-              <Badge variant={isPublished ? 'success' : 'secondary'}>{isPublished ? 'Published' : 'Draft'}</Badge>
+              <Badge variant={isPublished ? 'success' : 'secondary'}>{isPublished ? t('scheduler.published') : t('scheduler.draft')}</Badge>
               {schedule.updatedByName && (
-                <span className="text-xs text-muted-foreground">Last updated by {schedule.updatedByName}</span>
+                <span className="text-xs text-muted-foreground">{t('scheduler.lastUpdatedBy', { name: schedule.updatedByName })}</span>
               )}
               {!isPublished && (
                 <>
                   <Button variant="outline" onClick={() => void handleCopyPrevious()} disabled={copyPreviousMonth.isPending}>
                     <Copy />
-                    Copy previous month
+                    {t('scheduler.copyPreviousMonth')}
                   </Button>
                   <Button variant="outline" onClick={() => void handleSave()} disabled={scheduleQuery.isFetching}>
                     <RefreshCw />
-                    Save
+                    {t('scheduler.save')}
                   </Button>
                   <Button onClick={() => void handlePublish()} disabled={publishSchedule.isPending}>
-                    {publishSchedule.isPending ? 'Publishing…' : 'Publish'}
+                    {publishSchedule.isPending ? t('scheduler.publishing') : t('scheduler.publish')}
                   </Button>
                 </>
               )}
               {isPublished && !editingUnlocked && (
                 <Button variant="outline" onClick={() => setConfirmEditOpen(true)}>
                   <Pencil />
-                  Edit
+                  {t('scheduler.editSchedule')}
                 </Button>
               )}
               {isPublished && editingUnlocked && (
                 <>
                   <Button variant="outline" onClick={() => void handleSave()} disabled={scheduleQuery.isFetching}>
                     <RefreshCw />
-                    Save
+                    {t('scheduler.save')}
                   </Button>
                   <Button variant="outline" onClick={() => setEditingUnlocked(false)}>
-                    Done editing
+                    {t('scheduler.doneEditing')}
                   </Button>
                 </>
               )}
@@ -377,7 +378,7 @@ export function SchedulerPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {MONTH_LABELS.map((label, index) => (
+                {monthLabels.map((label, index) => (
                   <SelectItem key={label} value={String(index + 1)}>
                     {label}
                   </SelectItem>
@@ -399,25 +400,25 @@ export function SchedulerPage() {
             <Button variant="outline" size="icon" onClick={() => goToMonth(1)}>
               <ChevronRight />
             </Button>
-            <Button variant="outline" onClick={jumpToToday}>
+            <Button variant={isCurrentMonth ? 'default' : 'outline'} onClick={jumpToToday}>
               <CalendarDays />
-              Today
+              {t('scheduler.todayButton')}
             </Button>
           </div>
 
           <Input
             className="w-full max-w-xs"
-            placeholder="Search employee…"
+            placeholder={t('scheduler.searchEmployeePlaceholder')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
 
           <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
             <SelectTrigger className="w-44">
-              <SelectValue placeholder="Department" />
+              <SelectValue placeholder={t('common.department')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={NONE_VALUE}>All departments</SelectItem>
+              <SelectItem value={NONE_VALUE}>{t('scheduler.allDepartments')}</SelectItem>
               {departmentsQuery.data?.items.map((department) => (
                 <SelectItem key={department.id} value={department.id}>
                   {department.name}
@@ -428,10 +429,10 @@ export function SchedulerPage() {
 
           <Select value={positionFilter} onValueChange={setPositionFilter}>
             <SelectTrigger className="w-44">
-              <SelectValue placeholder="Position" />
+              <SelectValue placeholder={t('common.position')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={NONE_VALUE}>All positions</SelectItem>
+              <SelectItem value={NONE_VALUE}>{t('scheduler.allPositions')}</SelectItem>
               {positionsQuery.data?.items.map((position) => (
                 <SelectItem key={position.id} value={position.id}>
                   {position.title}
@@ -445,15 +446,15 @@ export function SchedulerPage() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="name">Sort: Employee name</SelectItem>
-              <SelectItem value="department">Sort: Department</SelectItem>
-              <SelectItem value="position">Sort: Position</SelectItem>
+              <SelectItem value="name">{t('scheduler.sortEmployeeName')}</SelectItem>
+              <SelectItem value="department">{t('scheduler.sortDepartment')}</SelectItem>
+              <SelectItem value="position">{t('scheduler.sortPosition')}</SelectItem>
             </SelectContent>
           </Select>
 
           <div className="flex items-center gap-2">
             <Switch checked={activeOnly} onCheckedChange={setActiveOnly} id="activeOnly" />
-            <Label htmlFor="activeOnly">Active only</Label>
+            <Label htmlFor="activeOnly">{t('scheduler.activeOnly')}</Label>
           </div>
         </CardContent>
       </Card>
@@ -463,7 +464,7 @@ export function SchedulerPage() {
           <CardContent className="py-8 text-center">
             <p className="text-sm text-destructive">{getErrorMessage(rosterQuery.error)}</p>
             <Button variant="outline" size="sm" className="mt-3" onClick={() => void rosterQuery.refetch()}>
-              Try again
+              {t('common.tryAgain')}
             </Button>
           </CardContent>
         </Card>
@@ -472,7 +473,7 @@ export function SchedulerPage() {
       {!rosterQuery.isError && (rosterQuery.isLoading || monthQuery.isLoading) && (
         <div className="flex items-center justify-center gap-2 py-16 text-muted-foreground">
           <Loader2 className="size-4 animate-spin" />
-          Loading scheduler…
+          {t('scheduler.loadingScheduler')}
         </div>
       )}
 
@@ -480,11 +481,11 @@ export function SchedulerPage() {
         <Card>
           <CardContent className="py-12 text-center">
             <p className="text-sm text-muted-foreground">
-              No schedule yet for {MONTH_LABELS[month - 1]} {year}.
+              {t('scheduler.noScheduleYet', { month: monthLabels[month - 1], year })}
             </p>
             <Button className="mt-4" onClick={() => void handleCreateSchedule()} disabled={createSchedule.isPending}>
               <Plus />
-              {createSchedule.isPending ? 'Creating…' : 'Create draft schedule'}
+              {createSchedule.isPending ? t('scheduler.creating') : t('scheduler.createDraftSchedule')}
             </Button>
           </CardContent>
         </Card>
@@ -495,7 +496,7 @@ export function SchedulerPage() {
           {scheduleQuery.isLoading || !schedule ? (
             <div className="flex items-center justify-center gap-2 py-16 text-muted-foreground">
               <Loader2 className="size-4 animate-spin" />
-              Loading assignments…
+              {t('scheduler.loadingAssignments')}
             </div>
           ) : (
             <ScheduleGrid
@@ -506,9 +507,11 @@ export function SchedulerPage() {
               absenceTypesById={absenceTypesById}
               availableTemplates={availableTemplates}
               availableAbsenceTypes={availableAbsenceTypes}
+              holidaysByDate={holidaysByDate}
               hoursByEmployee={hoursByEmployee}
               requiredHoursByEmploymentType={requiredHours.byType}
               disabled={!isEditable}
+              locale={locale}
               onAction={handleCellAction}
             />
           )}
@@ -518,9 +521,9 @@ export function SchedulerPage() {
       <ConfirmDialog
         open={confirmEditOpen}
         onOpenChange={setConfirmEditOpen}
-        title="Edit published schedule"
-        description="This schedule has already been published. You can still make changes — they save immediately and the schedule stays published. Continue?"
-        confirmLabel="Enable editing"
+        title={t('scheduler.editPublishedTitle')}
+        description={t('scheduler.editPublishedDescription')}
+        confirmLabel={t('scheduler.enableEditing')}
         onConfirm={confirmEnableEditing}
       />
     </div>

@@ -1,5 +1,6 @@
 import { CalendarDays, ClipboardList, LayoutGrid, LogOut, User as UserIcon } from 'lucide-react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
 import { NotificationBell } from '@/components/layout/NotificationBell'
 import { Button } from '@/components/ui/button'
@@ -7,10 +8,10 @@ import { useLogout } from '@/hooks/useAuth'
 import { useAuthStore } from '@/stores/auth.store'
 
 const TABS = [
-  { to: '/my-dashboard', label: 'Home', icon: LayoutGrid },
-  { to: '/my-schedule', label: 'Schedule', icon: CalendarDays },
-  { to: '/my-requests', label: 'Requests', icon: ClipboardList },
-  { to: '/my-profile', label: 'Profile', icon: UserIcon },
+  { to: '/my-dashboard', labelKey: 'portalNav.home', icon: LayoutGrid },
+  { to: '/my-schedule', labelKey: 'portalNav.schedule', icon: CalendarDays },
+  { to: '/my-requests', labelKey: 'portalNav.requests', icon: ClipboardList },
+  { to: '/my-profile', labelKey: 'portalNav.profile', icon: UserIcon },
 ]
 
 /**
@@ -21,6 +22,7 @@ const TABS = [
  * different navigation shapes.
  */
 export function EmployeeShell() {
+  const { t } = useTranslation()
   const user = useAuthStore((state) => state.user)
   const logout = useLogout()
   const navigate = useNavigate()
@@ -39,11 +41,11 @@ export function EmployeeShell() {
           <div className="flex size-8 items-center justify-center rounded-md bg-primary text-sm font-bold text-primary-foreground">
             P
           </div>
-          <span className="font-semibold">Pamaina</span>
+          <span className="font-semibold">{t('nav.appName')}</span>
         </div>
         <div className="flex items-center gap-1">
           <NotificationBell />
-          <Button variant="ghost" size="icon" aria-label="Sign out" onClick={() => void handleLogout()}>
+          <Button variant="ghost" size="icon" aria-label={t('topbar.signOut')} onClick={() => void handleLogout()}>
             <LogOut />
           </Button>
         </div>
@@ -65,7 +67,7 @@ export function EmployeeShell() {
             }
           >
             <tab.icon className="size-6" />
-            {tab.label}
+            {t(tab.labelKey)}
           </NavLink>
         ))}
       </nav>

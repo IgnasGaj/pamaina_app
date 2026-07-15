@@ -4,6 +4,7 @@ import { useState, type ChangeEvent, type ReactNode } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
 
 import { Button } from '@/components/ui/button'
@@ -19,33 +20,36 @@ import {
 } from '@/hooks/useCompany'
 import { getErrorMessage } from '@/lib/errors'
 import {
-  BUSINESS_TYPE_LABELS,
-  BUSINESS_TYPE_OPTIONS,
   COUNTRY_OPTIONS,
   LANGUAGE_OPTIONS,
   TIMEZONE_OPTIONS,
-  VACATION_POLICY_LABELS,
-  VACATION_POLICY_OPTIONS,
-  WORK_WEEK_TYPE_LABELS,
-  WORK_WEEK_TYPE_OPTIONS,
+  useBusinessTypeLabel,
+  useBusinessTypeOptions,
+  useVacationPolicyLabel,
+  useVacationPolicyOptions,
+  useWorkWeekTypeLabel,
+  useWorkWeekTypeOptions,
 } from '@/lib/company-options'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth.store'
 import { BUSINESS_TYPES, VACATION_POLICY_TYPES, WORK_WEEK_TYPES } from '@/types/company.types'
 import type { BusinessType, VacationPolicyType, WorkWeekType } from '@/types/company.types'
 
-const WIZARD_STEPS = [
-  { title: 'Company information', description: 'Tell us a bit about your company.' },
-  { title: 'Business type', description: 'What kind of business are you running?' },
-  { title: 'Work schedule', description: 'How is your working week organized?' },
-  { title: 'Vacation policy', description: 'How should vacation days be granted?' },
-  { title: 'All set', description: 'Review and head to your dashboard.' },
-]
+function useWizardSteps() {
+  const { t } = useTranslation()
+  return [
+    { title: t('onboarding.steps.companyInfoTitle'), description: t('onboarding.steps.companyInfoDescription') },
+    { title: t('onboarding.steps.businessTypeTitle'), description: t('onboarding.steps.businessTypeDescription') },
+    { title: t('onboarding.steps.workScheduleTitle'), description: t('onboarding.steps.workScheduleDescription') },
+    { title: t('onboarding.steps.vacationPolicyTitle'), description: t('onboarding.steps.vacationPolicyDescription') },
+    { title: t('onboarding.steps.allSetTitle'), description: t('onboarding.steps.allSetDescription') },
+  ]
+}
 
-function StepProgress({ currentIndex }: { currentIndex: number }) {
+function StepProgress({ currentIndex, steps }: { currentIndex: number; steps: { title: string }[] }) {
   return (
     <div className="mb-8 flex items-center">
-      {WIZARD_STEPS.map((step, index) => (
+      {steps.map((step, index) => (
         <div key={step.title} className="flex flex-1 items-center last:flex-none">
           <div
             className={cn(
@@ -57,7 +61,7 @@ function StepProgress({ currentIndex }: { currentIndex: number }) {
           >
             {index < currentIndex ? <CheckIcon className="size-4" /> : index + 1}
           </div>
-          {index < WIZARD_STEPS.length - 1 && (
+          {index < steps.length - 1 && (
             <div className={cn('mx-2 h-px flex-1', index < currentIndex ? 'bg-primary' : 'bg-border')} />
           )}
         </div>
@@ -94,7 +98,7 @@ function OptionCard({
 
 function WizardFooter({
   onBack,
-  onContinueLabel = 'Continue',
+  onContinueLabel,
   isPending,
   hideBack,
 }: {
@@ -103,28 +107,33 @@ function WizardFooter({
   isPending: boolean
   hideBack?: boolean
 }) {
+  const { t } = useTranslation()
   return (
     <div className="mt-8 flex items-center justify-between">
       {!hideBack && onBack ? (
         <Button type="button" variant="outline" onClick={onBack} disabled={isPending}>
-          Back
+          {t('onboarding.back')}
         </Button>
       ) : (
         <span />
       )}
       <Button type="submit" disabled={isPending}>
-        {isPending ? 'Saving…' : onContinueLabel}
+        {isPending ? t('common.saving') : (onContinueLabel ?? t('onboarding.continueButton'))}
       </Button>
     </div>
   )
 }
 
-const companyInfoSchema = z.object({
-  country: z.string().min(1, 'Select a country'),
-  timezone: z.string().min(1, 'Select a timezone'),
-  preferredLanguage: z.string().min(1, 'Select a language'),
-})
-type CompanyInfoValues = z.infer<typeof companyInfoSchema>
+type CompanyInfoValues = { country: string; timezone: string; preferredLanguage: string }
+
+function useCompanyInfoSchema() {
+  const { t } = useTranslation()
+  return z.object({
+    country: z.string().min(1, t('onboarding.selectCountry')),
+    timezone: z.string().min(1, t('onboarding.selectTimezone')),
+    preferredLanguage: z.string().min(1, t('onboarding.selectLanguage')),
+  })
+}
 
 function CompanyInfoStep({
   defaultValues,
@@ -137,6 +146,8 @@ function CompanyInfoStep({
   isPending: boolean
   onSubmit: (values: CompanyInfoValues, logoUrl: string | undefined) => void
 }) {
+  const { t } = useTranslation()
+  const companyInfoSchema = useCompanyInfoSchema()
   const [logoPreview, setLogoPreview] = useState<string | null>(defaultLogoUrl)
 
   const {
@@ -149,7 +160,7 @@ function CompanyInfoStep({
     const file = event.target.files?.[0]
     if (!file) return
     if (file.size > 2_000_000) {
-      toast.error('Logo must be smaller than 2MB')
+      toast.error(t('onboarding.logoTooLarge'))
       return
     }
     const reader = new FileReader()
@@ -163,7 +174,7 @@ function CompanyInfoStep({
       onSubmit={(e) => void handleSubmit((values) => onSubmit(values, logoPreview ?? undefined))(e)}
     >
       <div className="space-y-2">
-        <Label>Company logo (optional)</Label>
+        <Label>{t('onboarding.companyLogo')}</Label>
         <div className="flex items-center gap-4">
           <div className="flex size-16 items-center justify-center overflow-hidden rounded-lg border border-dashed border-border bg-muted/40">
             {logoPreview ? (
@@ -173,21 +184,21 @@ function CompanyInfoStep({
             )}
           </div>
           <label className="cursor-pointer text-sm font-medium text-primary hover:underline">
-            Upload logo
+            {t('onboarding.uploadLogo')}
             <input type="file" accept="image/*" className="hidden" onChange={handleLogoChange} />
           </label>
         </div>
       </div>
 
       <div className="space-y-2">
-        <Label>Country</Label>
+        <Label>{t('onboarding.country')}</Label>
         <Controller
           control={control}
           name="country"
           render={({ field }) => (
             <Select value={field.value} onValueChange={field.onChange}>
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select a country" />
+                <SelectValue placeholder={t('onboarding.selectCountry')} />
               </SelectTrigger>
               <SelectContent>
                 {COUNTRY_OPTIONS.map((option) => (
@@ -203,14 +214,14 @@ function CompanyInfoStep({
       </div>
 
       <div className="space-y-2">
-        <Label>Timezone</Label>
+        <Label>{t('onboarding.timezone')}</Label>
         <Controller
           control={control}
           name="timezone"
           render={({ field }) => (
             <Select value={field.value} onValueChange={field.onChange}>
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select a timezone" />
+                <SelectValue placeholder={t('onboarding.selectTimezone')} />
               </SelectTrigger>
               <SelectContent>
                 {TIMEZONE_OPTIONS.map((tz) => (
@@ -226,14 +237,14 @@ function CompanyInfoStep({
       </div>
 
       <div className="space-y-2">
-        <Label>Preferred language</Label>
+        <Label>{t('onboarding.preferredLanguage')}</Label>
         <Controller
           control={control}
           name="preferredLanguage"
           render={({ field }) => (
             <Select value={field.value} onValueChange={field.onChange}>
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select a language" />
+                <SelectValue placeholder={t('onboarding.selectLanguage')} />
               </SelectTrigger>
               <SelectContent>
                 {LANGUAGE_OPTIONS.map((option) => (
@@ -269,6 +280,8 @@ function BusinessTypeStep({
   onBack: () => void
   onSubmit: (values: BusinessTypeValues) => void
 }) {
+  const { t } = useTranslation()
+  const businessTypeOptions = useBusinessTypeOptions()
   const {
     control,
     handleSubmit,
@@ -285,7 +298,7 @@ function BusinessTypeStep({
         name="businessType"
         render={({ field }) => (
           <div className="grid grid-cols-2 gap-3">
-            {BUSINESS_TYPE_OPTIONS.map((option) => (
+            {businessTypeOptions.map((option) => (
               <OptionCard
                 key={option.value}
                 title={option.label}
@@ -297,7 +310,7 @@ function BusinessTypeStep({
           </div>
         )}
       />
-      {errors.businessType && <p className="text-sm text-destructive">Please select a business type</p>}
+      {errors.businessType && <p className="text-sm text-destructive">{t('onboarding.selectBusinessType')}</p>}
       <WizardFooter isPending={isPending} onBack={onBack} />
     </form>
   )
@@ -317,6 +330,8 @@ function WorkScheduleStep({
   onBack: () => void
   onSubmit: (values: WorkWeekValues) => void
 }) {
+  const { t } = useTranslation()
+  const workWeekTypeOptions = useWorkWeekTypeOptions()
   const {
     control,
     handleSubmit,
@@ -333,7 +348,7 @@ function WorkScheduleStep({
         name="workWeekType"
         render={({ field }) => (
           <div className="space-y-3">
-            {WORK_WEEK_TYPE_OPTIONS.map((option) => (
+            {workWeekTypeOptions.map((option) => (
               <OptionCard
                 key={option.value}
                 title={option.label}
@@ -345,7 +360,7 @@ function WorkScheduleStep({
           </div>
         )}
       />
-      {errors.workWeekType && <p className="text-sm text-destructive">Please select a work schedule</p>}
+      {errors.workWeekType && <p className="text-sm text-destructive">{t('onboarding.selectWorkSchedule')}</p>}
       <WizardFooter isPending={isPending} onBack={onBack} />
     </form>
   )
@@ -365,6 +380,8 @@ function VacationPolicyStep({
   onBack: () => void
   onSubmit: (values: VacationPolicyValues) => void
 }) {
+  const { t } = useTranslation()
+  const vacationPolicyOptions = useVacationPolicyOptions()
   const {
     control,
     handleSubmit,
@@ -381,7 +398,7 @@ function VacationPolicyStep({
         name="vacationPolicy"
         render={({ field }) => (
           <div className="space-y-3">
-            {VACATION_POLICY_OPTIONS.map((option) => (
+            {vacationPolicyOptions.map((option) => (
               <OptionCard
                 key={option.value}
                 title={option.label}
@@ -393,7 +410,7 @@ function VacationPolicyStep({
           </div>
         )}
       />
-      {errors.vacationPolicy && <p className="text-sm text-destructive">Please select a vacation policy</p>}
+      {errors.vacationPolicy && <p className="text-sm text-destructive">{t('onboarding.selectVacationPolicy')}</p>}
       <WizardFooter isPending={isPending} onBack={onBack} />
     </form>
   )
@@ -416,11 +433,16 @@ function FinishStep({
   onBack: () => void
   onFinish: () => void
 }) {
+  const { t } = useTranslation()
+  const businessTypeLabel = useBusinessTypeLabel(businessType)
+  const workWeekTypeLabel = useWorkWeekTypeLabel(workWeekType)
+  const vacationPolicyLabel = useVacationPolicyLabel(vacationPolicy)
+
   const summary: { label: string; value: string }[] = [
-    { label: 'Company', value: companyName },
-    { label: 'Business type', value: businessType ? BUSINESS_TYPE_LABELS[businessType] : '—' },
-    { label: 'Work schedule', value: workWeekType ? WORK_WEEK_TYPE_LABELS[workWeekType] : '—' },
-    { label: 'Vacation policy', value: vacationPolicy ? VACATION_POLICY_LABELS[vacationPolicy] : '—' },
+    { label: t('onboarding.summaryCompany'), value: companyName },
+    { label: t('onboarding.summaryBusinessType'), value: businessTypeLabel ?? '—' },
+    { label: t('onboarding.summaryWorkSchedule'), value: workWeekTypeLabel ?? '—' },
+    { label: t('onboarding.summaryVacationPolicy'), value: vacationPolicyLabel ?? '—' },
   ]
 
   return (
@@ -436,15 +458,13 @@ function FinishStep({
           </div>
         ))}
       </div>
-      <p className="text-sm text-muted-foreground">
-        You're all set. You can change any of this later from Company settings.
-      </p>
+      <p className="text-sm text-muted-foreground">{t('onboarding.allSetFooter')}</p>
       <div className="mt-8 flex items-center justify-between">
         <Button type="button" variant="outline" onClick={onBack} disabled={isPending}>
-          Back
+          {t('onboarding.back')}
         </Button>
         <Button type="button" onClick={onFinish} disabled={isPending}>
-          {isPending ? 'Finishing…' : 'Go to dashboard'}
+          {isPending ? t('onboarding.finishing') : t('onboarding.goToDashboard')}
         </Button>
       </div>
     </div>
@@ -452,6 +472,8 @@ function FinishStep({
 }
 
 export function OnboardingPage(): ReactNode {
+  const { t } = useTranslation()
+  const wizardSteps = useWizardSteps()
   const user = useAuthStore((state) => state.user)
   const companyId = user?.companyId ?? undefined
   const navigate = useNavigate()
@@ -517,7 +539,7 @@ export function OnboardingPage(): ReactNode {
     }
   }
 
-  const currentStep = WIZARD_STEPS[stepIndex]
+  const currentStep = wizardSteps[stepIndex]
 
   return (
     <div className="flex min-h-svh items-center justify-center bg-muted/30 px-4 py-10">
@@ -527,10 +549,10 @@ export function OnboardingPage(): ReactNode {
           <CardDescription>{currentStep.description}</CardDescription>
         </CardHeader>
         <CardContent>
-          <StepProgress currentIndex={stepIndex} />
+          <StepProgress currentIndex={stepIndex} steps={wizardSteps} />
 
           {isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
+            <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
           ) : (
             <>
               {stepIndex === 0 && (

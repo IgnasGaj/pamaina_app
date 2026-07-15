@@ -2,6 +2,7 @@ import { Loader2, MoreHorizontal, Plus, Search } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 
 import { PageHeader } from '@/components/layout/PageHeader'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
@@ -33,11 +34,11 @@ const STATUS_BADGE_VARIANT: Record<EmployeeStatus, 'success' | 'warning' | 'seco
   ARCHIVED: 'secondary',
 }
 
-const STATUS_FILTER_OPTIONS: { value: EmployeeStatus; label: string }[] = [
-  { value: 'ACTIVE', label: 'Active' },
-  { value: 'INACTIVE', label: 'Inactive' },
-  { value: 'ARCHIVED', label: 'Archived' },
-]
+const EMPLOYEE_STATUS_LABEL_KEYS: Record<EmployeeStatus, string> = {
+  ACTIVE: 'common.active',
+  INACTIVE: 'common.inactive',
+  ARCHIVED: 'common.archived',
+}
 
 interface SortOption {
   value: string
@@ -46,14 +47,19 @@ interface SortOption {
   label: string
 }
 
-const SORT_OPTIONS: SortOption[] = [
-  { value: 'name-asc', sortBy: 'name', sortOrder: 'asc', label: 'Name (A–Z)' },
-  { value: 'name-desc', sortBy: 'name', sortOrder: 'desc', label: 'Name (Z–A)' },
-  { value: 'createdAt-desc', sortBy: 'createdAt', sortOrder: 'desc', label: 'Recently added' },
-  { value: 'createdAt-asc', sortBy: 'createdAt', sortOrder: 'asc', label: 'Oldest added' },
-]
-
 export function EmployeesPage() {
+  const { t } = useTranslation()
+  const STATUS_FILTER_OPTIONS: { value: EmployeeStatus; label: string }[] = [
+    { value: 'ACTIVE', label: t('common.active') },
+    { value: 'INACTIVE', label: t('common.inactive') },
+    { value: 'ARCHIVED', label: t('common.archived') },
+  ]
+  const SORT_OPTIONS: SortOption[] = [
+    { value: 'name-asc', sortBy: 'name', sortOrder: 'asc', label: t('common.nameAZ') },
+    { value: 'name-desc', sortBy: 'name', sortOrder: 'desc', label: t('common.nameZA') },
+    { value: 'createdAt-desc', sortBy: 'createdAt', sortOrder: 'desc', label: t('common.recentlyAdded') },
+    { value: 'createdAt-asc', sortBy: 'createdAt', sortOrder: 'asc', label: t('common.oldestAdded') },
+  ]
   const hasAnyPermission = useAuthStore((state) => state.hasAnyPermission)
   const canCreate = hasAnyPermission([PERMISSIONS.EMPLOYEE_CREATE])
   const canUpdate = hasAnyPermission([PERMISSIONS.EMPLOYEE_UPDATE])
@@ -98,7 +104,7 @@ export function EmployeesPage() {
     if (!archivingEmployee) return
     try {
       await archiveEmployee.mutateAsync(archivingEmployee.id)
-      toast.success('Employee archived')
+      toast.success(t('employees.employeeArchived'))
       setArchivingEmployee(undefined)
     } catch (error) {
       toast.error(getErrorMessage(error))
@@ -108,7 +114,7 @@ export function EmployeesPage() {
   async function handleRestore(employee: Employee) {
     try {
       await restoreEmployee.mutateAsync(employee.id)
-      toast.success('Employee restored')
+      toast.success(t('employees.employeeRestored'))
     } catch (error) {
       toast.error(getErrorMessage(error))
     }
@@ -119,13 +125,13 @@ export function EmployeesPage() {
   return (
     <div>
       <PageHeader
-        title="Employees"
-        description="Manage your workforce records."
+        title={t('employees.title')}
+        description={t('employees.description')}
         actions={
           canCreate && (
             <Button onClick={openCreateDialog}>
               <Plus />
-              New employee
+              {t('employees.newEmployee')}
             </Button>
           )
         }
@@ -138,7 +144,7 @@ export function EmployeesPage() {
               <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 className="pl-9"
-                placeholder="Search by name, email, phone…"
+                placeholder={t('employees.searchPlaceholder')}
                 value={search}
                 onChange={(e) => {
                   setSearch(e.target.value)
@@ -155,10 +161,10 @@ export function EmployeesPage() {
               }}
             >
               <SelectTrigger className="w-40">
-                <SelectValue placeholder="Status" />
+                <SelectValue placeholder={t('common.status')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={NONE_VALUE}>All statuses</SelectItem>
+                <SelectItem value={NONE_VALUE}>{t('common.allStatuses')}</SelectItem>
                 {STATUS_FILTER_OPTIONS.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}
@@ -169,7 +175,7 @@ export function EmployeesPage() {
 
             <Select value={sort} onValueChange={setSort}>
               <SelectTrigger className="w-48">
-                <SelectValue placeholder="Sort by" />
+                <SelectValue placeholder={t('common.sortBy')} />
               </SelectTrigger>
               <SelectContent>
                 {SORT_OPTIONS.map((option) => (
@@ -184,11 +190,11 @@ export function EmployeesPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Code</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Department</TableHead>
-                <TableHead>Position</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{t('common.code')}</TableHead>
+                <TableHead>{t('common.name')}</TableHead>
+                <TableHead>{t('common.department')}</TableHead>
+                <TableHead>{t('common.position')}</TableHead>
+                <TableHead>{t('common.status')}</TableHead>
                 {(canUpdate || canDelete) && <TableHead className="w-10" />}
               </TableRow>
             </TableHeader>
@@ -198,7 +204,7 @@ export function EmployeesPage() {
                   <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
                     <div className="flex items-center justify-center gap-2">
                       <Loader2 className="size-4 animate-spin" />
-                      Loading employees…
+                      {t('employees.loadingEmployees')}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -214,7 +220,7 @@ export function EmployeesPage() {
                       className="mt-3"
                       onClick={() => void employeesQuery.refetch()}
                     >
-                      Try again
+                      {t('common.tryAgain')}
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -223,9 +229,7 @@ export function EmployeesPage() {
               {!employeesQuery.isLoading && !employeesQuery.isError && employees.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
-                    {search || statusFilter !== NONE_VALUE
-                      ? 'No employees match your filters.'
-                      : 'No employees yet. Add your first employee to get started.'}
+                    {search || statusFilter !== NONE_VALUE ? t('employees.noMatch') : t('employees.noneYet')}
                   </TableCell>
                 </TableRow>
               )}
@@ -244,7 +248,7 @@ export function EmployeesPage() {
                     <TableCell className="text-muted-foreground">{employee.positionTitle ?? '—'}</TableCell>
                     <TableCell>
                       <Badge variant={STATUS_BADGE_VARIANT[employee.status]}>
-                        {employee.status.charAt(0) + employee.status.slice(1).toLowerCase()}
+                        {EMPLOYEE_STATUS_LABEL_KEYS[employee.status] ? t(EMPLOYEE_STATUS_LABEL_KEYS[employee.status]) : employee.status}
                       </Badge>
                     </TableCell>
                     {(canUpdate || canDelete) && (
@@ -257,22 +261,22 @@ export function EmployeesPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem asChild>
-                              <Link to={`/employees/${employee.id}`}>View details</Link>
+                              <Link to={`/employees/${employee.id}`}>{t('common.viewDetails')}</Link>
                             </DropdownMenuItem>
                             {canUpdate && (
-                              <DropdownMenuItem onClick={() => openEditDialog(employee)}>Edit</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => openEditDialog(employee)}>{t('common.edit')}</DropdownMenuItem>
                             )}
                             {canDelete && employee.status !== 'ARCHIVED' && (
                               <DropdownMenuItem
                                 variant="destructive"
                                 onClick={() => setArchivingEmployee(employee)}
                               >
-                                Archive
+                                {t('common.archive')}
                               </DropdownMenuItem>
                             )}
                             {canDelete && employee.status === 'ARCHIVED' && (
                               <DropdownMenuItem onClick={() => void handleRestore(employee)}>
-                                Restore
+                                {t('common.restore')}
                               </DropdownMenuItem>
                             )}
                           </DropdownMenuContent>
@@ -293,9 +297,11 @@ export function EmployeesPage() {
       <ConfirmDialog
         open={Boolean(archivingEmployee)}
         onOpenChange={(open) => !open && setArchivingEmployee(undefined)}
-        title="Archive employee"
-        description={`Are you sure you want to archive "${archivingEmployee?.firstName} ${archivingEmployee?.lastName}"? They will be hidden from the default list but can be restored at any time.`}
-        confirmLabel="Archive"
+        title={t('employees.archiveTitle')}
+        description={t('employees.archiveDescription', {
+          name: `${archivingEmployee?.firstName} ${archivingEmployee?.lastName}`,
+        })}
+        confirmLabel={t('common.archive')}
         isLoading={archiveEmployee.isPending}
         onConfirm={() => void confirmArchive()}
       />

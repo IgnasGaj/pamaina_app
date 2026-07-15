@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -15,6 +16,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useApproveRequest, useRejectRequest } from '@/hooks/useRequests'
 import { getErrorMessage } from '@/lib/errors'
+import { formatLongDate, formatLongDateTime, type AppLocale } from '@/lib/date'
 import type { EmployeeRequest, RequestStatus } from '@/types/request.types'
 
 const STATUS_BADGE_VARIANT: Record<RequestStatus, 'secondary' | 'success' | 'destructive' | 'outline'> = {
@@ -24,12 +26,11 @@ const STATUS_BADGE_VARIANT: Record<RequestStatus, 'secondary' | 'success' | 'des
   CANCELLED: 'outline',
 }
 
-function formatDate(value: string): string {
-  return new Date(value).toLocaleDateString()
-}
-
-function formatDateTime(value: string): string {
-  return new Date(value).toLocaleString()
+const STATUS_LABEL_KEYS: Record<RequestStatus, string> = {
+  PENDING: 'requests.pending',
+  APPROVED: 'requests.approved',
+  REJECTED: 'requests.rejected',
+  CANCELLED: 'requests.cancelled',
 }
 
 function Field({ label, value }: { label: string; value: string }) {
@@ -48,6 +49,9 @@ export function RequestDetailsDialog({
   request: EmployeeRequest | undefined
   onOpenChange: (open: boolean) => void
 }) {
+  const { t, i18n } = useTranslation()
+  const locale: AppLocale = i18n.language === 'en' ? 'en' : 'lt'
+  const formatDate = (value: string) => formatLongDate(value.slice(0, 10), locale)
   const [reviewComment, setReviewComment] = useState('')
   const approveRequest = useApproveRequest()
   const rejectRequest = useRejectRequest()
@@ -56,7 +60,7 @@ export function RequestDetailsDialog({
     if (!request) return
     try {
       await approveRequest.mutateAsync({ id: request.id, payload: { reviewComment: reviewComment || undefined } })
-      toast.success('Request approved')
+      toast.success(t('requests.approved_toast'))
       onOpenChange(false)
     } catch (error) {
       toast.error(getErrorMessage(error))
@@ -67,7 +71,7 @@ export function RequestDetailsDialog({
     if (!request) return
     try {
       await rejectRequest.mutateAsync({ id: request.id, payload: { reviewComment: reviewComment || undefined } })
-      toast.success('Request rejected')
+      toast.success(t('requests.rejected_toast'))
       onOpenChange(false)
     } catch (error) {
       toast.error(getErrorMessage(error))
@@ -84,28 +88,28 @@ export function RequestDetailsDialog({
     >
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Request details</DialogTitle>
+          <DialogTitle>{t('requests.detailsTitle')}</DialogTitle>
           <DialogDescription>{request?.employeeName}</DialogDescription>
         </DialogHeader>
         {request && (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <Field label="Type" value={request.absenceTypeName} />
+              <Field label={t('requests.type')} value={request.absenceTypeName} />
               <div>
-                <p className="text-xs text-muted-foreground">Status</p>
-                <Badge variant={STATUS_BADGE_VARIANT[request.status]}>{request.status}</Badge>
+                <p className="text-xs text-muted-foreground">{t('common.status')}</p>
+                <Badge variant={STATUS_BADGE_VARIANT[request.status]}>{t(STATUS_LABEL_KEYS[request.status])}</Badge>
               </div>
-              <Field label="Start date" value={formatDate(request.startDate)} />
-              <Field label="End date" value={formatDate(request.endDate)} />
-              <Field label="Submitted" value={formatDateTime(request.createdAt)} />
-              {request.reviewedAt && <Field label="Reviewed" value={formatDateTime(request.reviewedAt)} />}
+              <Field label={t('requests.startDate')} value={formatDate(request.startDate)} />
+              <Field label={t('requests.endDate')} value={formatDate(request.endDate)} />
+              <Field label={t('requests.submitted')} value={formatLongDateTime(request.createdAt, locale)} />
+              {request.reviewedAt && <Field label={t('requests.reviewed')} value={formatLongDateTime(request.reviewedAt, locale)} />}
             </div>
-            {request.comment && <Field label="Employee comment" value={request.comment} />}
-            {request.reviewComment && <Field label="Manager note" value={request.reviewComment} />}
+            {request.comment && <Field label={t('requests.employeeComment')} value={request.comment} />}
+            {request.reviewComment && <Field label={t('requests.managerNote')} value={request.reviewComment} />}
 
             {request.status === 'PENDING' && (
               <div className="space-y-2">
-                <Label htmlFor="reviewComment">Note to employee (optional)</Label>
+                <Label htmlFor="reviewComment">{t('requests.noteToEmployee')}</Label>
                 <Textarea
                   id="reviewComment"
                   rows={2}
@@ -119,10 +123,10 @@ export function RequestDetailsDialog({
         {request?.status === 'PENDING' && (
           <DialogFooter>
             <Button variant="destructive" disabled={rejectRequest.isPending} onClick={() => void handleReject()}>
-              {rejectRequest.isPending ? 'Rejecting…' : 'Reject'}
+              {rejectRequest.isPending ? t('requests.rejecting') : t('requests.reject')}
             </Button>
             <Button disabled={approveRequest.isPending} onClick={() => void handleApprove()}>
-              {approveRequest.isPending ? 'Approving…' : 'Approve'}
+              {approveRequest.isPending ? t('requests.approving') : t('requests.approve')}
             </Button>
           </DialogFooter>
         )}

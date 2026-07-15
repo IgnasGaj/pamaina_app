@@ -1,6 +1,7 @@
 import { Loader2, MoreHorizontal, Plus, Search } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { PaginationBar } from '@/components/shared/PaginationBar'
@@ -31,16 +32,16 @@ interface SortOption {
   label: string
 }
 
-const SORT_OPTIONS: SortOption[] = [
-  { value: 'name-asc', sortBy: 'name', sortOrder: 'asc', label: 'Name (A–Z)' },
-  { value: 'name-desc', sortBy: 'name', sortOrder: 'desc', label: 'Name (Z–A)' },
-  { value: 'createdAt-desc', sortBy: 'createdAt', sortOrder: 'desc', label: 'Recently created' },
-  { value: 'createdAt-asc', sortBy: 'createdAt', sortOrder: 'asc', label: 'Oldest created' },
-  { value: 'employeeCount-desc', sortBy: 'employeeCount', sortOrder: 'desc', label: 'Most employees' },
-  { value: 'employeeCount-asc', sortBy: 'employeeCount', sortOrder: 'asc', label: 'Fewest employees' },
-]
-
 export function DepartmentsPage() {
+  const { t } = useTranslation()
+  const SORT_OPTIONS: SortOption[] = [
+    { value: 'name-asc', sortBy: 'name', sortOrder: 'asc', label: t('common.nameAZ') },
+    { value: 'name-desc', sortBy: 'name', sortOrder: 'desc', label: t('common.nameZA') },
+    { value: 'createdAt-desc', sortBy: 'createdAt', sortOrder: 'desc', label: t('common.recentlyCreated') },
+    { value: 'createdAt-asc', sortBy: 'createdAt', sortOrder: 'asc', label: t('common.oldestCreated') },
+    { value: 'employeeCount-desc', sortBy: 'employeeCount', sortOrder: 'desc', label: t('common.mostEmployees') },
+    { value: 'employeeCount-asc', sortBy: 'employeeCount', sortOrder: 'asc', label: t('common.fewestEmployees') },
+  ]
   const hasAnyPermission = useAuthStore((state) => state.hasAnyPermission)
   const canCreate = hasAnyPermission([PERMISSIONS.DEPARTMENT_CREATE])
   const canUpdate = hasAnyPermission([PERMISSIONS.DEPARTMENT_UPDATE])
@@ -85,7 +86,7 @@ export function DepartmentsPage() {
     if (!archivingDepartment) return
     try {
       await archiveDepartment.mutateAsync(archivingDepartment.id)
-      toast.success('Department archived')
+      toast.success(t('departments.archived'))
       setArchivingDepartment(undefined)
     } catch (error) {
       toast.error(getErrorMessage(error))
@@ -95,7 +96,7 @@ export function DepartmentsPage() {
   async function handleRestore(department: Department) {
     try {
       await restoreDepartment.mutateAsync(department.id)
-      toast.success('Department restored')
+      toast.success(t('departments.restored'))
     } catch (error) {
       toast.error(getErrorMessage(error))
     }
@@ -110,7 +111,7 @@ export function DepartmentsPage() {
           <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             className="pl-9"
-            placeholder="Search departments…"
+            placeholder={t('departments.searchPlaceholder')}
             value={search}
             onChange={(e) => {
               setSearch(e.target.value)
@@ -127,18 +128,18 @@ export function DepartmentsPage() {
           }}
         >
           <SelectTrigger className="w-40">
-            <SelectValue placeholder="Status" />
+            <SelectValue placeholder={t('common.status')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={NONE_VALUE}>All statuses</SelectItem>
-            <SelectItem value="ACTIVE">Active</SelectItem>
-            <SelectItem value="ARCHIVED">Archived</SelectItem>
+            <SelectItem value={NONE_VALUE}>{t('common.allStatuses')}</SelectItem>
+            <SelectItem value="ACTIVE">{t('common.active')}</SelectItem>
+            <SelectItem value="ARCHIVED">{t('common.archived')}</SelectItem>
           </SelectContent>
         </Select>
 
         <Select value={sort} onValueChange={setSort}>
           <SelectTrigger className="w-48">
-            <SelectValue placeholder="Sort by" />
+            <SelectValue placeholder={t('common.sortBy')} />
           </SelectTrigger>
           <SelectContent>
             {SORT_OPTIONS.map((option) => (
@@ -152,7 +153,7 @@ export function DepartmentsPage() {
         {canCreate && (
           <Button className="ml-auto" onClick={openCreateDialog}>
             <Plus />
-            New department
+            {t('departments.newDepartment')}
           </Button>
         )}
       </div>
@@ -160,10 +161,10 @@ export function DepartmentsPage() {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Description</TableHead>
-            <TableHead>Employees</TableHead>
-            <TableHead>Status</TableHead>
+            <TableHead>{t('common.name')}</TableHead>
+            <TableHead>{t('common.description')}</TableHead>
+            <TableHead>{t('common.employees')}</TableHead>
+            <TableHead>{t('common.status')}</TableHead>
             {(canUpdate || canDelete) && <TableHead className="w-10" />}
           </TableRow>
         </TableHeader>
@@ -173,7 +174,7 @@ export function DepartmentsPage() {
               <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
                 <div className="flex items-center justify-center gap-2">
                   <Loader2 className="size-4 animate-spin" />
-                  Loading departments…
+                  {t('departments.loadingDepartments')}
                 </div>
               </TableCell>
             </TableRow>
@@ -184,7 +185,7 @@ export function DepartmentsPage() {
               <TableCell colSpan={5} className="py-8 text-center">
                 <p className="text-sm text-destructive">{getErrorMessage(departmentsQuery.error)}</p>
                 <Button variant="outline" size="sm" className="mt-3" onClick={() => void departmentsQuery.refetch()}>
-                  Try again
+                  {t('common.tryAgain')}
                 </Button>
               </TableCell>
             </TableRow>
@@ -193,9 +194,7 @@ export function DepartmentsPage() {
           {!departmentsQuery.isLoading && !departmentsQuery.isError && departments.length === 0 && (
             <TableRow>
               <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
-                {search || statusFilter !== NONE_VALUE
-                  ? 'No departments match your filters.'
-                  : 'No departments yet. Add your first department to get started.'}
+                {search || statusFilter !== NONE_VALUE ? t('departments.noMatch') : t('departments.noneYet')}
               </TableCell>
             </TableRow>
           )}
@@ -220,7 +219,7 @@ export function DepartmentsPage() {
                 <TableCell>{department.employeeCount}</TableCell>
                 <TableCell>
                   <Badge variant={department.isArchived ? 'secondary' : department.isActive ? 'success' : 'warning'}>
-                    {department.isArchived ? 'Archived' : department.isActive ? 'Active' : 'Inactive'}
+                    {department.isArchived ? t('common.archived') : department.isActive ? t('common.active') : t('common.inactive')}
                   </Badge>
                 </TableCell>
                 {(canUpdate || canDelete) && (
@@ -233,19 +232,19 @@ export function DepartmentsPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         {canUpdate && (
-                          <DropdownMenuItem onClick={() => openEditDialog(department)}>Edit</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openEditDialog(department)}>{t('common.edit')}</DropdownMenuItem>
                         )}
                         {canDelete && !department.isArchived && (
                           <DropdownMenuItem
                             variant="destructive"
                             onClick={() => setArchivingDepartment(department)}
                           >
-                            Archive
+                            {t('common.archive')}
                           </DropdownMenuItem>
                         )}
                         {canDelete && department.isArchived && (
                           <DropdownMenuItem onClick={() => void handleRestore(department)}>
-                            Restore
+                            {t('common.restore')}
                           </DropdownMenuItem>
                         )}
                       </DropdownMenuContent>
@@ -264,9 +263,9 @@ export function DepartmentsPage() {
       <ConfirmDialog
         open={Boolean(archivingDepartment)}
         onOpenChange={(open) => !open && setArchivingDepartment(undefined)}
-        title="Archive department"
-        description={`Are you sure you want to archive "${archivingDepartment?.name}"? It will be hidden from the default list but can be restored at any time.`}
-        confirmLabel="Archive"
+        title={t('departments.archiveTitle')}
+        description={t('departments.archiveDescription', { name: archivingDepartment?.name })}
+        confirmLabel={t('common.archive')}
         isLoading={archiveDepartment.isPending}
         onConfirm={() => void confirmArchive()}
       />

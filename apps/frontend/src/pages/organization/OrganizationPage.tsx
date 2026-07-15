@@ -1,4 +1,5 @@
 import { useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card, CardContent } from '@/components/ui/card'
@@ -11,6 +12,7 @@ import { PERMISSIONS } from '@/types/auth.types'
 type OrganizationTab = 'departments' | 'positions'
 
 export function OrganizationPage() {
+  const { t } = useTranslation()
   const hasAnyPermission = useAuthStore((state) => state.hasAnyPermission)
   const canReadDepartments = hasAnyPermission([PERMISSIONS.DEPARTMENT_READ])
   const canReadPositions = hasAnyPermission([PERMISSIONS.POSITION_READ])
@@ -33,14 +35,14 @@ export function OrganizationPage() {
 
   return (
     <div>
-      <PageHeader title="Organization" description="Organize your company into departments and positions." />
+      <PageHeader title={t('organization.title')} description={t('organization.description')} />
 
       <Card>
         <CardContent className="pt-6">
           <Tabs value={activeTab} onValueChange={handleTabChange}>
             <TabsList>
-              {canReadDepartments && <TabsTrigger value="departments">Departments</TabsTrigger>}
-              {canReadPositions && <TabsTrigger value="positions">Positions</TabsTrigger>}
+              {canReadDepartments && <TabsTrigger value="departments">{t('organization.departmentsTab')}</TabsTrigger>}
+              {canReadPositions && <TabsTrigger value="positions">{t('organization.positionsTab')}</TabsTrigger>}
             </TabsList>
             {canReadDepartments && (
               <TabsContent value="departments" className="mt-4">

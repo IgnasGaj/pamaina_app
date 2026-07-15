@@ -2,6 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
 
 import { Button } from '@/components/ui/button'
@@ -12,18 +13,21 @@ import { useChangePassword, useLogin } from '@/hooks/useAuth'
 import { useAuthStore } from '@/stores/auth.store'
 import { getErrorMessage } from '@/lib/errors'
 
-const changePasswordSchema = z
-  .object({
-    currentPassword: z.string().min(1, 'Current password is required'),
-    newPassword: z.string().min(8, 'New password must be at least 8 characters').max(128),
-    confirmPassword: z.string().min(1, 'Confirm your new password'),
-  })
-  .refine((data) => data.newPassword === data.confirmPassword, {
-    message: 'Passwords do not match',
-    path: ['confirmPassword'],
-  })
+function useChangePasswordSchema() {
+  const { t } = useTranslation()
+  return z
+    .object({
+      currentPassword: z.string().min(1, t('auth.validation.currentPasswordRequired')),
+      newPassword: z.string().min(8, t('auth.validation.passwordMinLength')).max(128),
+      confirmPassword: z.string().min(1, t('auth.validation.confirmPasswordRequired')),
+    })
+    .refine((data) => data.newPassword === data.confirmPassword, {
+      message: t('auth.validation.passwordsDoNotMatch'),
+      path: ['confirmPassword'],
+    })
+}
 
-type ChangePasswordFormValues = z.infer<typeof changePasswordSchema>
+type ChangePasswordFormValues = { currentPassword: string; newPassword: string; confirmPassword: string }
 
 /**
  * Forced first-login step for accounts still on a system-generated
@@ -33,6 +37,8 @@ type ChangePasswordFormValues = z.infer<typeof changePasswordSchema>
  * their dashboard instead of bouncing them back to the login form.
  */
 export function ChangePasswordPage() {
+  const { t } = useTranslation()
+  const changePasswordSchema = useChangePasswordSchema()
   const user = useAuthStore((state) => state.user)
   const changePassword = useChangePassword()
   const login = useLogin()
@@ -58,7 +64,7 @@ export function ChangePasswordPage() {
         password: values.newPassword,
         rememberMe: true,
       })
-      toast.success('Password updated')
+      toast.success(t('auth.passwordUpdated'))
       const defaultPath = session.user.roleKey === 'EMPLOYEE' ? '/my-dashboard' : '/'
       void navigate(defaultPath, { replace: true })
     } catch (error) {
@@ -75,15 +81,13 @@ export function ChangePasswordPage() {
           <div className="mb-2 flex size-9 items-center justify-center rounded-md bg-primary text-sm font-bold text-primary-foreground">
             P
           </div>
-          <CardTitle className="text-xl">Set a new password</CardTitle>
-          <CardDescription>
-            Your account was created with a temporary password. Set your own password to continue.
-          </CardDescription>
+          <CardTitle className="text-xl">{t('auth.changePasswordTitle')}</CardTitle>
+          <CardDescription>{t('auth.changePasswordDescription')}</CardDescription>
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={(e) => void handleSubmit(onSubmit)(e)}>
             <div className="space-y-2">
-              <Label htmlFor="currentPassword">Temporary password</Label>
+              <Label htmlFor="currentPassword">{t('auth.temporaryPassword')}</Label>
               <Input
                 id="currentPassword"
                 type="password"
@@ -95,12 +99,12 @@ export function ChangePasswordPage() {
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="newPassword">New password</Label>
+              <Label htmlFor="newPassword">{t('auth.newPassword')}</Label>
               <Input id="newPassword" type="password" autoComplete="new-password" {...register('newPassword')} />
               {errors.newPassword && <p className="text-sm text-destructive">{errors.newPassword.message}</p>}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm new password</Label>
+              <Label htmlFor="confirmPassword">{t('auth.confirmNewPassword')}</Label>
               <Input
                 id="confirmPassword"
                 type="password"
@@ -112,7 +116,7 @@ export function ChangePasswordPage() {
               )}
             </div>
             <Button type="submit" className="w-full" disabled={isPending}>
-              {isPending ? 'Saving…' : 'Save and continue'}
+              {isPending ? t('common.saving') : t('auth.saveAndContinue')}
             </Button>
           </form>
         </CardContent>

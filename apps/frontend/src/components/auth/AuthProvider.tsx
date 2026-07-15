@@ -1,7 +1,23 @@
 import { useEffect, type ReactNode } from 'react'
 
 import * as authApi from '@/api/auth.api'
+import { useCompanySettings } from '@/hooks/useCompany'
+import { setAppLanguage } from '@/i18n'
 import { useAuthStore } from '@/stores/auth.store'
+
+/** Applies the company's preferred language to the whole UI once it's known. */
+function LanguageSync() {
+  const companyId = useAuthStore((state) => state.user?.companyId ?? undefined)
+  const settingsQuery = useCompanySettings(companyId)
+
+  useEffect(() => {
+    if (settingsQuery.data?.preferredLanguage) {
+      setAppLanguage(settingsQuery.data.preferredLanguage)
+    }
+  }, [settingsQuery.data?.preferredLanguage])
+
+  return null
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const status = useAuthStore((state) => state.status)
@@ -33,5 +49,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     )
   }
 
-  return children
+  return (
+    <>
+      {status === 'authenticated' && <LanguageSync />}
+      {children}
+    </>
+  )
 }

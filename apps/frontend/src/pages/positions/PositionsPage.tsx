@@ -1,6 +1,7 @@
 import { Loader2, MoreHorizontal, Plus, Search } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { PaginationBar } from '@/components/shared/PaginationBar'
@@ -31,16 +32,16 @@ interface SortOption {
   label: string
 }
 
-const SORT_OPTIONS: SortOption[] = [
-  { value: 'name-asc', sortBy: 'name', sortOrder: 'asc', label: 'Name (A–Z)' },
-  { value: 'name-desc', sortBy: 'name', sortOrder: 'desc', label: 'Name (Z–A)' },
-  { value: 'createdAt-desc', sortBy: 'createdAt', sortOrder: 'desc', label: 'Recently created' },
-  { value: 'createdAt-asc', sortBy: 'createdAt', sortOrder: 'asc', label: 'Oldest created' },
-  { value: 'employeeCount-desc', sortBy: 'employeeCount', sortOrder: 'desc', label: 'Most employees' },
-  { value: 'employeeCount-asc', sortBy: 'employeeCount', sortOrder: 'asc', label: 'Fewest employees' },
-]
-
 export function PositionsPage() {
+  const { t } = useTranslation()
+  const SORT_OPTIONS: SortOption[] = [
+    { value: 'name-asc', sortBy: 'name', sortOrder: 'asc', label: t('common.nameAZ') },
+    { value: 'name-desc', sortBy: 'name', sortOrder: 'desc', label: t('common.nameZA') },
+    { value: 'createdAt-desc', sortBy: 'createdAt', sortOrder: 'desc', label: t('common.recentlyCreated') },
+    { value: 'createdAt-asc', sortBy: 'createdAt', sortOrder: 'asc', label: t('common.oldestCreated') },
+    { value: 'employeeCount-desc', sortBy: 'employeeCount', sortOrder: 'desc', label: t('common.mostEmployees') },
+    { value: 'employeeCount-asc', sortBy: 'employeeCount', sortOrder: 'asc', label: t('common.fewestEmployees') },
+  ]
   const hasAnyPermission = useAuthStore((state) => state.hasAnyPermission)
   const canCreate = hasAnyPermission([PERMISSIONS.POSITION_CREATE])
   const canUpdate = hasAnyPermission([PERMISSIONS.POSITION_UPDATE])
@@ -85,7 +86,7 @@ export function PositionsPage() {
     if (!archivingPosition) return
     try {
       await archivePosition.mutateAsync(archivingPosition.id)
-      toast.success('Position archived')
+      toast.success(t('positions.archived'))
       setArchivingPosition(undefined)
     } catch (error) {
       toast.error(getErrorMessage(error))
@@ -95,7 +96,7 @@ export function PositionsPage() {
   async function handleRestore(position: Position) {
     try {
       await restorePosition.mutateAsync(position.id)
-      toast.success('Position restored')
+      toast.success(t('positions.restored'))
     } catch (error) {
       toast.error(getErrorMessage(error))
     }
@@ -110,7 +111,7 @@ export function PositionsPage() {
           <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             className="pl-9"
-            placeholder="Search positions…"
+            placeholder={t('positions.searchPlaceholder')}
             value={search}
             onChange={(e) => {
               setSearch(e.target.value)
@@ -127,18 +128,18 @@ export function PositionsPage() {
           }}
         >
           <SelectTrigger className="w-40">
-            <SelectValue placeholder="Status" />
+            <SelectValue placeholder={t('common.status')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={NONE_VALUE}>All statuses</SelectItem>
-            <SelectItem value="ACTIVE">Active</SelectItem>
-            <SelectItem value="ARCHIVED">Archived</SelectItem>
+            <SelectItem value={NONE_VALUE}>{t('common.allStatuses')}</SelectItem>
+            <SelectItem value="ACTIVE">{t('common.active')}</SelectItem>
+            <SelectItem value="ARCHIVED">{t('common.archived')}</SelectItem>
           </SelectContent>
         </Select>
 
         <Select value={sort} onValueChange={setSort}>
           <SelectTrigger className="w-48">
-            <SelectValue placeholder="Sort by" />
+            <SelectValue placeholder={t('common.sortBy')} />
           </SelectTrigger>
           <SelectContent>
             {SORT_OPTIONS.map((option) => (
@@ -152,7 +153,7 @@ export function PositionsPage() {
         {canCreate && (
           <Button className="ml-auto" onClick={openCreateDialog}>
             <Plus />
-            New position
+            {t('positions.newPosition')}
           </Button>
         )}
       </div>
@@ -160,10 +161,10 @@ export function PositionsPage() {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Title</TableHead>
-            <TableHead>Department</TableHead>
-            <TableHead>Employees</TableHead>
-            <TableHead>Status</TableHead>
+            <TableHead>{t('common.title')}</TableHead>
+            <TableHead>{t('common.department')}</TableHead>
+            <TableHead>{t('common.employees')}</TableHead>
+            <TableHead>{t('common.status')}</TableHead>
             {(canUpdate || canDelete) && <TableHead className="w-10" />}
           </TableRow>
         </TableHeader>
@@ -173,7 +174,7 @@ export function PositionsPage() {
               <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
                 <div className="flex items-center justify-center gap-2">
                   <Loader2 className="size-4 animate-spin" />
-                  Loading positions…
+                  {t('positions.loadingPositions')}
                 </div>
               </TableCell>
             </TableRow>
@@ -184,7 +185,7 @@ export function PositionsPage() {
               <TableCell colSpan={5} className="py-8 text-center">
                 <p className="text-sm text-destructive">{getErrorMessage(positionsQuery.error)}</p>
                 <Button variant="outline" size="sm" className="mt-3" onClick={() => void positionsQuery.refetch()}>
-                  Try again
+                  {t('common.tryAgain')}
                 </Button>
               </TableCell>
             </TableRow>
@@ -193,9 +194,7 @@ export function PositionsPage() {
           {!positionsQuery.isLoading && !positionsQuery.isError && positions.length === 0 && (
             <TableRow>
               <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
-                {search || statusFilter !== NONE_VALUE
-                  ? 'No positions match your filters.'
-                  : 'No positions yet. Add your first position to get started.'}
+                {search || statusFilter !== NONE_VALUE ? t('positions.noMatch') : t('positions.noneYet')}
               </TableCell>
             </TableRow>
           )}
@@ -218,7 +217,7 @@ export function PositionsPage() {
                 <TableCell>{position.employeeCount}</TableCell>
                 <TableCell>
                   <Badge variant={position.isArchived ? 'secondary' : position.isActive ? 'success' : 'warning'}>
-                    {position.isArchived ? 'Archived' : position.isActive ? 'Active' : 'Inactive'}
+                    {position.isArchived ? t('common.archived') : position.isActive ? t('common.active') : t('common.inactive')}
                   </Badge>
                 </TableCell>
                 {(canUpdate || canDelete) && (
@@ -231,15 +230,15 @@ export function PositionsPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         {canUpdate && (
-                          <DropdownMenuItem onClick={() => openEditDialog(position)}>Edit</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openEditDialog(position)}>{t('common.edit')}</DropdownMenuItem>
                         )}
                         {canDelete && !position.isArchived && (
                           <DropdownMenuItem variant="destructive" onClick={() => setArchivingPosition(position)}>
-                            Archive
+                            {t('common.archive')}
                           </DropdownMenuItem>
                         )}
                         {canDelete && position.isArchived && (
-                          <DropdownMenuItem onClick={() => void handleRestore(position)}>Restore</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => void handleRestore(position)}>{t('common.restore')}</DropdownMenuItem>
                         )}
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -257,9 +256,9 @@ export function PositionsPage() {
       <ConfirmDialog
         open={Boolean(archivingPosition)}
         onOpenChange={(open) => !open && setArchivingPosition(undefined)}
-        title="Archive position"
-        description={`Are you sure you want to archive "${archivingPosition?.title}"? It will be hidden from the default list but can be restored at any time.`}
-        confirmLabel="Archive"
+        title={t('positions.archiveTitle')}
+        description={t('positions.archiveDescription', { title: archivingPosition?.title })}
+        confirmLabel={t('common.archive')}
         isLoading={archivePosition.isPending}
         onConfirm={() => void confirmArchive()}
       />

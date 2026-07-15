@@ -2,6 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useEffect } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
 
 import { Button } from '@/components/ui/button'
@@ -21,24 +22,31 @@ import { useCreateUser, useUpdateUser } from '@/hooks/useUsers'
 import { getErrorMessage } from '@/lib/errors'
 import type { CompanyUser } from '@/types/user.types'
 
-const userFormSchema = z.object({
-  firstName: z.string().min(1, 'First name is required').max(100),
-  lastName: z.string().min(1, 'Last name is required').max(100),
-  email: z.string().email('Enter a valid email address'),
-  phone: z.string().max(30).optional().or(z.literal('')),
-  password: z.string().max(128),
-  roleId: z.string().min(1, 'Role is required'),
-})
+type UserFormValues = {
+  firstName: string
+  lastName: string
+  email: string
+  phone?: string
+  password: string
+  roleId: string
+}
 
-type UserFormValues = z.infer<typeof userFormSchema>
-
-function buildUserFormSchema(isEditing: boolean) {
-  if (isEditing) return userFormSchema
-  return userFormSchema.superRefine((values, ctx) => {
+function useUserFormSchema(isEditing: boolean) {
+  const { t } = useTranslation()
+  const base = z.object({
+    firstName: z.string().min(1, t('auth.validation.firstNameRequired')).max(100),
+    lastName: z.string().min(1, t('auth.validation.lastNameRequired')).max(100),
+    email: z.string().email(t('auth.validation.emailRequired')),
+    phone: z.string().max(30).optional().or(z.literal('')),
+    password: z.string().max(128),
+    roleId: z.string().min(1, t('users.validation.roleRequired')),
+  })
+  if (isEditing) return base
+  return base.superRefine((values, ctx) => {
     if (values.password.length < 8) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'Password must be at least 8 characters',
+        message: t('users.validation.passwordMinLength'),
         path: ['password'],
       })
     }
@@ -54,7 +62,9 @@ export function UserFormDialog({
   onOpenChange: (open: boolean) => void
   user?: CompanyUser
 }) {
+  const { t } = useTranslation()
   const isEditing = Boolean(user)
+  const userFormSchema = useUserFormSchema(isEditing)
   const createUser = useCreateUser()
   const updateUser = useUpdateUser(user?.id ?? '')
   const rolesQuery = useRoles()
@@ -66,7 +76,7 @@ export function UserFormDialog({
     control,
     formState: { errors },
   } = useForm<UserFormValues>({
-    resolver: zodResolver(buildUserFormSchema(isEditing)),
+    resolver: zodResolver(userFormSchema),
     defaultValues: { firstName: '', lastName: '', email: '', phone: '', password: '', roleId: '' },
   })
 
@@ -92,7 +102,7 @@ export function UserFormDialog({
           phone: values.phone || undefined,
           roleId: values.roleId,
         })
-        toast.success('Team member updated')
+        toast.success(t('users.memberUpdated'))
       } else {
         await createUser.mutateAsync({
           firstName: values.firstName,
@@ -102,7 +112,7 @@ export function UserFormDialog({
           password: values.password,
           roleId: values.roleId,
         })
-        toast.success('Team member invited')
+        toast.success(t('users.memberInvited'))
       }
       onOpenChange(false)
     } catch (error) {
@@ -116,53 +126,53 @@ export function UserFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{isEditing ? 'Edit team member' : 'Invite team member'}</DialogTitle>
+          <DialogTitle>{isEditing ? t('users.editMember') : t('users.inviteMemberTitle')}</DialogTitle>
           <DialogDescription>
-            {isEditing ? "Update this team member's role and details." : 'Create a new user account for your company.'}
+            {isEditing ? t('users.editMemberDescription') : t('users.createMemberDescription')}
           </DialogDescription>
         </DialogHeader>
         <form className="space-y-4" onSubmit={(e) => void handleSubmit(onSubmit)(e)}>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label htmlFor="firstName">First name</Label>
+              <Label htmlFor="firstName">{t('auth.firstName')}</Label>
               <Input id="firstName" {...register('firstName')} />
               {errors.firstName && <p className="text-sm text-destructive">{errors.firstName.message}</p>}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="lastName">Last name</Label>
+              <Label htmlFor="lastName">{t('auth.lastName')}</Label>
               <Input id="lastName" {...register('lastName')} />
               {errors.lastName && <p className="text-sm text-destructive">{errors.lastName.message}</p>}
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t('common.email')}</Label>
             <Input id="email" type="email" disabled={isEditing} {...register('email')} />
             {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="phone">Phone</Label>
+            <Label htmlFor="phone">{t('common.phone')}</Label>
             <Input id="phone" {...register('phone')} />
           </div>
 
           {!isEditing && (
             <div className="space-y-2">
-              <Label htmlFor="password">Temporary password</Label>
+              <Label htmlFor="password">{t('users.temporaryPassword')}</Label>
               <Input id="password" type="password" autoComplete="new-password" {...register('password')} />
               {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
             </div>
           )}
 
           <div className="space-y-2">
-            <Label>Role</Label>
+            <Label>{t('users.role')}</Label>
             <Controller
               control={control}
               name="roleId"
               render={({ field }) => (
                 <Select value={field.value} onValueChange={field.onChange}>
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select a role" />
+                    <SelectValue placeholder={t('users.selectRole')} />
                   </SelectTrigger>
                   <SelectContent>
                     {rolesQuery.data?.map((role) => (
@@ -179,10 +189,10 @@ export function UserFormDialog({
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button type="submit" disabled={isPending}>
-              {isPending ? 'Saving…' : isEditing ? 'Save changes' : 'Send invite'}
+              {isPending ? t('common.saving') : isEditing ? t('common.saveChanges') : t('users.sendInvite')}
             </Button>
           </DialogFooter>
         </form>

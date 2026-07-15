@@ -2,6 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useEffect } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
 
 import { Button } from '@/components/ui/button'
@@ -25,15 +26,24 @@ import type { Position } from '@/types/position.types'
 
 const NONE_VALUE = '__none__'
 
-const positionSchema = z.object({
-  title: z.string().min(1, 'Title is required').max(200),
-  description: z.string().max(1000).optional().or(z.literal('')),
-  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Enter a valid hex color'),
-  departmentId: z.string(),
-  isActive: z.boolean(),
-})
+function usePositionSchema() {
+  const { t } = useTranslation()
+  return z.object({
+    title: z.string().min(1, t('common.titleRequired')).max(200),
+    description: z.string().max(1000).optional().or(z.literal('')),
+    color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, t('common.validHexColor')),
+    departmentId: z.string(),
+    isActive: z.boolean(),
+  })
+}
 
-type PositionFormValues = z.infer<typeof positionSchema>
+type PositionFormValues = {
+  title: string
+  description?: string
+  color: string
+  departmentId: string
+  isActive: boolean
+}
 
 export function PositionFormDialog({
   open,
@@ -44,6 +54,8 @@ export function PositionFormDialog({
   onOpenChange: (open: boolean) => void
   position?: Position
 }) {
+  const { t } = useTranslation()
+  const positionSchema = usePositionSchema()
   const isEditing = Boolean(position)
   const createPosition = useCreatePosition()
   const updatePosition = useUpdatePosition(position?.id ?? '')
@@ -83,7 +95,7 @@ export function PositionFormDialog({
           departmentId: departmentId ?? null,
           isActive: values.isActive,
         })
-        toast.success('Position updated')
+        toast.success(t('positions.updated'))
       } else {
         await createPosition.mutateAsync({
           title: values.title,
@@ -91,7 +103,7 @@ export function PositionFormDialog({
           color: values.color,
           departmentId,
         })
-        toast.success('Position created')
+        toast.success(t('positions.created'))
       }
       onOpenChange(false)
     } catch (error) {
@@ -105,23 +117,23 @@ export function PositionFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{isEditing ? 'Edit position' : 'New position'}</DialogTitle>
+          <DialogTitle>{isEditing ? t('positions.editPosition') : t('positions.newPosition')}</DialogTitle>
           <DialogDescription>
-            {isEditing ? 'Update the position details.' : 'Add a new position to your company.'}
+            {isEditing ? t('positions.editDescription') : t('positions.createDescription')}
           </DialogDescription>
         </DialogHeader>
         <form className="space-y-4" onSubmit={(e) => void handleSubmit(onSubmit)(e)}>
           <div className="space-y-2">
-            <Label htmlFor="title">Title</Label>
+            <Label htmlFor="title">{t('common.title')}</Label>
             <Input id="title" {...register('title')} />
             {errors.title && <p className="text-sm text-destructive">{errors.title.message}</p>}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
+            <Label htmlFor="description">{t('common.description')}</Label>
             <Input id="description" {...register('description')} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="color">Color</Label>
+            <Label htmlFor="color">{t('common.color')}</Label>
             <Controller
               control={control}
               name="color"
@@ -130,17 +142,17 @@ export function PositionFormDialog({
             {errors.color && <p className="text-sm text-destructive">{errors.color.message}</p>}
           </div>
           <div className="space-y-2">
-            <Label>Department</Label>
+            <Label>{t('common.department')}</Label>
             <Controller
               control={control}
               name="departmentId"
               render={({ field }) => (
                 <Select value={field.value} onValueChange={field.onChange}>
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="No department" />
+                    <SelectValue placeholder={t('employees.noDepartment')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={NONE_VALUE}>No department</SelectItem>
+                    <SelectItem value={NONE_VALUE}>{t('employees.noDepartment')}</SelectItem>
                     {departmentsQuery.data?.items.map((department) => (
                       <SelectItem key={department.id} value={department.id}>
                         {department.name}
@@ -154,7 +166,7 @@ export function PositionFormDialog({
           {isEditing && (
             <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
               <Label htmlFor="isActive" className="cursor-pointer">
-                Active
+                {t('common.active')}
               </Label>
               <Controller
                 control={control}
@@ -167,10 +179,10 @@ export function PositionFormDialog({
           )}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button type="submit" disabled={isPending}>
-              {isPending ? 'Saving…' : isEditing ? 'Save changes' : 'Create position'}
+              {isPending ? t('common.saving') : isEditing ? t('common.saveChanges') : t('positions.newPosition')}
             </Button>
           </DialogFooter>
         </form>

@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next'
+
 import { Input } from '@/components/ui/input'
 
 export function ColorPickerInput({
@@ -9,6 +11,7 @@ export function ColorPickerInput({
   value: string
   onChange: (value: string) => void
 }) {
+  const { t } = useTranslation()
   return (
     <div className="flex items-center gap-2">
       <input
@@ -17,7 +20,7 @@ export function ColorPickerInput({
         value={/^#[0-9A-Fa-f]{6}$/.test(value) ? value : '#2563EB'}
         onChange={(e) => onChange(e.target.value)}
         className="size-9 shrink-0 cursor-pointer rounded-md border border-input bg-transparent p-1"
-        aria-label="Pick a color"
+        aria-label={t('common.pickColor')}
       />
       <Input
         value={value}

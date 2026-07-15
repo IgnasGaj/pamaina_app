@@ -1,10 +1,12 @@
 import { NavLink } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
 import { NAV_ITEMS } from '@/components/layout/nav-items'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth.store'
 
 export function Sidebar() {
+  const { t } = useTranslation()
   const user = useAuthStore((state) => state.user)
   const hasAnyPermission = useAuthStore((state) => state.hasAnyPermission)
 
@@ -21,7 +23,7 @@ export function Sidebar() {
         <div className="flex size-7 items-center justify-center rounded-md bg-primary text-sm font-bold text-primary-foreground">
           P
         </div>
-        <span className="text-base font-semibold tracking-tight">Pamaina</span>
+        <span className="text-base font-semibold tracking-tight">{t('nav.appName')}</span>
       </div>
 
       <nav className="flex-1 space-y-0.5 p-3">
@@ -38,7 +40,7 @@ export function Sidebar() {
             }
           >
             <item.icon className="size-4" />
-            {item.label}
+            {t(item.labelKey)}
           </NavLink>
         ))}
       </nav>

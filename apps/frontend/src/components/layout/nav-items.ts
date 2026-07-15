@@ -5,6 +5,7 @@ import {
   CalendarX,
   ClipboardList,
   Clock,
+  Globe,
   LayoutDashboard,
   Settings,
   Timer,
@@ -16,7 +17,8 @@ import { PERMISSIONS, type PermissionKey, type SystemRoleKey } from '@/types/aut
 
 export interface NavItem {
   to: string
-  label: string
+  /** i18n key under the "nav" namespace, e.g. "nav.dashboard". */
+  labelKey: string
   icon: LucideIcon
   /** Visible if the user has any one of these permissions. */
   permission?: PermissionKey | PermissionKey[]
@@ -24,24 +26,30 @@ export interface NavItem {
 }
 
 export const NAV_ITEMS: NavItem[] = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/employees', label: 'Employees', icon: Users, permission: PERMISSIONS.EMPLOYEE_READ },
-  { to: '/scheduler', label: 'Scheduler', icon: CalendarRange, permission: PERMISSIONS.SCHEDULE_READ },
-  { to: '/shift-templates', label: 'Shift templates', icon: Clock, permission: PERMISSIONS.SHIFT_TEMPLATE_READ },
-  { to: '/absence-types', label: 'Absence types', icon: CalendarX, permission: PERMISSIONS.ABSENCE_TYPE_READ },
+  { to: '/', labelKey: 'nav.dashboard', icon: LayoutDashboard },
+  { to: '/employees', labelKey: 'nav.employees', icon: Users, permission: PERMISSIONS.EMPLOYEE_READ },
+  { to: '/scheduler', labelKey: 'nav.scheduler', icon: CalendarRange, permission: PERMISSIONS.SCHEDULE_READ },
+  {
+    to: '/shift-templates',
+    labelKey: 'nav.shiftTemplates',
+    icon: Clock,
+    permission: PERMISSIONS.SHIFT_TEMPLATE_READ,
+  },
+  { to: '/absence-types', labelKey: 'nav.absenceTypes', icon: CalendarX, permission: PERMISSIONS.ABSENCE_TYPE_READ },
   {
     to: '/settings/working-time',
-    label: 'Working time',
+    labelKey: 'nav.workingTime',
     icon: Timer,
     permission: PERMISSIONS.WORKING_TIME_READ,
   },
   {
     to: '/organization',
-    label: 'Organization',
+    labelKey: 'nav.organization',
     icon: Building2,
     permission: [PERMISSIONS.DEPARTMENT_READ, PERMISSIONS.POSITION_READ],
   },
-  { to: '/requests', label: 'Employee requests', icon: ClipboardList, permission: PERMISSIONS.REQUEST_MANAGE },
-  { to: '/users', label: 'Team members', icon: UserCog, permission: PERMISSIONS.USER_READ },
-  { to: '/settings/company', label: 'Company settings', icon: Settings, roleKey: 'COMPANY_OWNER' },
+  { to: '/requests', labelKey: 'nav.employeeRequests', icon: ClipboardList, permission: PERMISSIONS.REQUEST_MANAGE },
+  { to: '/users', labelKey: 'nav.teamMembers', icon: UserCog, permission: PERMISSIONS.USER_READ },
+  { to: '/settings/company', labelKey: 'nav.companySettings', icon: Settings, roleKey: 'COMPANY_OWNER' },
+  { to: '/settings/localization', labelKey: 'nav.localizationSettings', icon: Globe, roleKey: 'COMPANY_OWNER' },
 ]

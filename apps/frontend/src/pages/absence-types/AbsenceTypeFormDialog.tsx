@@ -2,6 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useEffect } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
 
 import { Button } from '@/components/ui/button'
@@ -21,14 +22,17 @@ import { useCreateAbsenceType, useUpdateAbsenceType } from '@/hooks/useAbsenceTy
 import { getErrorMessage } from '@/lib/errors'
 import type { AbsenceType } from '@/types/absence-type.types'
 
-const absenceTypeSchema = z.object({
-  name: z.string().min(1, 'Name is required').max(100),
-  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Enter a valid hex color'),
-  paid: z.boolean(),
-  active: z.boolean(),
-})
+function useAbsenceTypeSchema() {
+  const { t } = useTranslation()
+  return z.object({
+    name: z.string().min(1, t('common.nameRequired')).max(100),
+    color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, t('common.validHexColor')),
+    paid: z.boolean(),
+    active: z.boolean(),
+  })
+}
 
-type AbsenceTypeFormValues = z.infer<typeof absenceTypeSchema>
+type AbsenceTypeFormValues = { name: string; color: string; paid: boolean; active: boolean }
 
 export function AbsenceTypeFormDialog({
   open,
@@ -39,6 +43,8 @@ export function AbsenceTypeFormDialog({
   onOpenChange: (open: boolean) => void
   absenceType?: AbsenceType
 }) {
+  const { t } = useTranslation()
+  const absenceTypeSchema = useAbsenceTypeSchema()
   const isEditing = Boolean(absenceType)
   const createAbsenceType = useCreateAbsenceType()
   const updateAbsenceType = useUpdateAbsenceType(absenceType?.id ?? '')
@@ -74,14 +80,14 @@ export function AbsenceTypeFormDialog({
           paid: values.paid,
           active: values.active,
         })
-        toast.success('Absence type updated')
+        toast.success(t('absenceTypes.updated'))
       } else {
         await createAbsenceType.mutateAsync({
           name: values.name,
           color: values.color,
           paid: values.paid,
         })
-        toast.success('Absence type created')
+        toast.success(t('absenceTypes.created'))
       }
       onOpenChange(false)
     } catch (error) {
@@ -95,20 +101,20 @@ export function AbsenceTypeFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{isEditing ? 'Edit absence type' : 'New absence type'}</DialogTitle>
+          <DialogTitle>{isEditing ? t('absenceTypes.editType') : t('absenceTypes.newType')}</DialogTitle>
           <DialogDescription>
-            {isEditing ? 'Update this absence type.' : 'Define a new absence your team can be scheduled into.'}
+            {isEditing ? t('absenceTypes.editDescription') : t('absenceTypes.createDescription')}
           </DialogDescription>
         </DialogHeader>
         <form className="space-y-4" onSubmit={(e) => void handleSubmit(onSubmit)(e)}>
           <div className="space-y-2">
-            <Label htmlFor="name">Name</Label>
+            <Label htmlFor="name">{t('common.name')}</Label>
             <Input id="name" placeholder="Vacation" {...register('name')} />
             {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="color">Color</Label>
+            <Label htmlFor="color">{t('common.color')}</Label>
             <Controller
               control={control}
               name="color"
@@ -119,7 +125,7 @@ export function AbsenceTypeFormDialog({
 
           <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
             <Label htmlFor="paid" className="cursor-pointer">
-              Paid
+              {t('absenceTypes.paid')}
             </Label>
             <Controller
               control={control}
@@ -131,7 +137,7 @@ export function AbsenceTypeFormDialog({
           {isEditing && (
             <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
               <Label htmlFor="active" className="cursor-pointer">
-                Active
+                {t('common.active')}
               </Label>
               <Controller
                 control={control}
@@ -143,10 +149,10 @@ export function AbsenceTypeFormDialog({
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button type="submit" disabled={isPending}>
-              {isPending ? 'Saving…' : isEditing ? 'Save changes' : 'Create absence type'}
+              {isPending ? t('common.saving') : isEditing ? t('common.saveChanges') : t('absenceTypes.newType')}
             </Button>
           </DialogFooter>
         </form>

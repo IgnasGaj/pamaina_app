@@ -1,5 +1,6 @@
 import { LogOut, User as UserIcon } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
@@ -19,6 +20,7 @@ function getInitials(firstName: string, lastName: string): string {
 }
 
 export function Topbar() {
+  const { t } = useTranslation()
   const user = useAuthStore((state) => state.user)
   const logout = useLogout()
   const navigate = useNavigate()
@@ -50,11 +52,11 @@ export function Topbar() {
             <DropdownMenuSeparator />
             <DropdownMenuItem disabled>
               <UserIcon />
-              My profile
+              {t('topbar.myProfile')}
             </DropdownMenuItem>
             <DropdownMenuItem variant="destructive" onClick={() => void handleLogout()}>
               <LogOut />
-              Sign out
+              {t('topbar.signOut')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

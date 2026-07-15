@@ -2,6 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
 
 import { Button } from '@/components/ui/button'
@@ -18,12 +19,15 @@ import { Label } from '@/components/ui/label'
 import { useCreateNonWorkingDay } from '@/hooks/useWorkingTime'
 import { getErrorMessage } from '@/lib/errors'
 
-const nonWorkingDaySchema = z.object({
-  date: z.string().refine((value) => !Number.isNaN(new Date(value).getTime()), 'Enter a valid date'),
-  name: z.string().min(1, 'Name is required').max(200),
-})
+function useNonWorkingDaySchema() {
+  const { t } = useTranslation()
+  return z.object({
+    date: z.string().refine((value) => !Number.isNaN(new Date(value).getTime()), t('common.validDate')),
+    name: z.string().min(1, t('common.nameRequired')).max(200),
+  })
+}
 
-type NonWorkingDayFormValues = z.infer<typeof nonWorkingDaySchema>
+type NonWorkingDayFormValues = { date: string; name: string }
 
 export function NonWorkingDayFormDialog({
   open,
@@ -32,6 +36,8 @@ export function NonWorkingDayFormDialog({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
+  const { t } = useTranslation()
+  const nonWorkingDaySchema = useNonWorkingDaySchema()
   const createNonWorkingDay = useCreateNonWorkingDay()
 
   const {
@@ -53,7 +59,7 @@ export function NonWorkingDayFormDialog({
   async function onSubmit(values: NonWorkingDayFormValues) {
     try {
       await createNonWorkingDay.mutateAsync({ date: values.date, name: values.name })
-      toast.success('Non-working day added')
+      toast.success(t('workingTime.dayAdded'))
       onOpenChange(false)
     } catch (error) {
       toast.error(getErrorMessage(error))
@@ -64,28 +70,26 @@ export function NonWorkingDayFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>New non-working day</DialogTitle>
-          <DialogDescription>
-            Add a company-specific day (e.g. a factory shutdown) that reduces required monthly hours for everyone.
-          </DialogDescription>
+          <DialogTitle>{t('workingTime.newDayTitle')}</DialogTitle>
+          <DialogDescription>{t('workingTime.newDayDescription')}</DialogDescription>
         </DialogHeader>
         <form className="space-y-4" onSubmit={(e) => void handleSubmit(onSubmit)(e)}>
           <div className="space-y-2">
-            <Label htmlFor="date">Date</Label>
+            <Label htmlFor="date">{t('common.date')}</Label>
             <Input id="date" type="date" {...register('date')} />
             {errors.date && <p className="text-sm text-destructive">{errors.date.message}</p>}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="name">Name</Label>
-            <Input id="name" placeholder="Company anniversary" {...register('name')} />
+            <Label htmlFor="name">{t('common.name')}</Label>
+            <Input id="name" placeholder={t('workingTime.namePlaceholder')} {...register('name')} />
             {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button type="submit" disabled={createNonWorkingDay.isPending}>
-              {createNonWorkingDay.isPending ? 'Adding…' : 'Add day'}
+              {createNonWorkingDay.isPending ? t('workingTime.adding') : t('workingTime.addDay')}
             </Button>
           </DialogFooter>
         </form>

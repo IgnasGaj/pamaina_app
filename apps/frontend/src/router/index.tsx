@@ -20,6 +20,7 @@ import { ShiftTemplatesPage } from '@/pages/shift-templates/ShiftTemplatesPage'
 import { AbsenceTypesPage } from '@/pages/absence-types/AbsenceTypesPage'
 import { UsersPage } from '@/pages/users/UsersPage'
 import { CompanySettingsPage } from '@/pages/settings/CompanySettingsPage'
+import { LocalizationSettingsPage } from '@/pages/settings/LocalizationSettingsPage'
 import { WorkingTimeSettingsPage } from '@/pages/settings/WorkingTimeSettingsPage'
 import { EmployeeRequestsPage } from '@/pages/requests/EmployeeRequestsPage'
 import { EmployeeDashboardPage } from '@/pages/portal/EmployeeDashboardPage'
@@ -96,6 +97,7 @@ export const router = createBrowserRouter([
                         children: [{ path: 'requests', element: <EmployeeRequestsPage /> }],
                       },
                       { path: 'settings/company', element: <CompanySettingsPage /> },
+                      { path: 'settings/localization', element: <LocalizationSettingsPage /> },
                     ],
                   },
                 ],

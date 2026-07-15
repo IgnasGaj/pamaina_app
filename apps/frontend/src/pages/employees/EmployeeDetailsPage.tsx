@@ -2,6 +2,7 @@ import { ArrowLeft, Loader2 } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 
 import { PageHeader } from '@/components/layout/PageHeader'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
@@ -10,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useArchiveEmployee, useEmployee, useRestoreEmployee } from '@/hooks/useEmployees'
 import { getErrorMessage } from '@/lib/errors'
+import { formatLongDate } from '@/lib/date'
 import { useAuthStore } from '@/stores/auth.store'
 import { PERMISSIONS } from '@/types/auth.types'
 import type { EmployeeStatus, EmploymentType } from '@/types/employee.types'
@@ -21,16 +23,17 @@ const STATUS_BADGE_VARIANT: Record<EmployeeStatus, 'success' | 'warning' | 'seco
   ARCHIVED: 'secondary',
 }
 
-const EMPLOYMENT_TYPE_LABELS: Record<EmploymentType, string> = {
-  FULL_TIME: 'Full-time',
-  PART_TIME_75: 'Part-time (75%)',
-  PART_TIME_50: 'Part-time (50%)',
-  PART_TIME_25: 'Part-time (25%)',
+const EMPLOYEE_STATUS_KEYS: Record<EmployeeStatus, string> = {
+  ACTIVE: 'common.active',
+  INACTIVE: 'common.inactive',
+  ARCHIVED: 'common.archived',
 }
 
-function formatDate(value: string | null): string {
-  if (!value) return '—'
-  return new Date(value).toLocaleDateString()
+const EMPLOYMENT_TYPE_KEYS: Record<EmploymentType, string> = {
+  FULL_TIME: 'employees.fullTime',
+  PART_TIME_75: 'employees.partTime75',
+  PART_TIME_50: 'employees.partTime50',
+  PART_TIME_25: 'employees.partTime25',
 }
 
 function Field({ label, value }: { label: string; value: string }) {
@@ -43,6 +46,8 @@ function Field({ label, value }: { label: string; value: string }) {
 }
 
 export function EmployeeDetailsPage() {
+  const { t, i18n } = useTranslation()
+  const locale = i18n.language === 'en' ? 'en' : 'lt'
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const hasAnyPermission = useAuthStore((state) => state.hasAnyPermission)
@@ -56,11 +61,16 @@ export function EmployeeDetailsPage() {
   const archiveEmployee = useArchiveEmployee()
   const restoreEmployee = useRestoreEmployee()
 
+  function formatDate(value: string | null): string {
+    if (!value) return '—'
+    return formatLongDate(value.slice(0, 10), locale)
+  }
+
   async function confirmArchive() {
     if (!id) return
     try {
       await archiveEmployee.mutateAsync(id)
-      toast.success('Employee archived')
+      toast.success(t('employees.employeeArchived'))
       setConfirmingArchive(false)
     } catch (error) {
       toast.error(getErrorMessage(error))
@@ -71,7 +81,7 @@ export function EmployeeDetailsPage() {
     if (!id) return
     try {
       await restoreEmployee.mutateAsync(id)
-      toast.success('Employee restored')
+      toast.success(t('employees.employeeRestored'))
     } catch (error) {
       toast.error(getErrorMessage(error))
     }
@@ -81,7 +91,7 @@ export function EmployeeDetailsPage() {
     return (
       <div className="flex items-center justify-center gap-2 py-16 text-muted-foreground">
         <Loader2 className="size-4 animate-spin" />
-        Loading employee…
+        {t('common.loading')}
       </div>
     )
   }
@@ -90,10 +100,10 @@ export function EmployeeDetailsPage() {
     return (
       <div className="py-16 text-center">
         <p className="text-sm text-destructive">
-          {employeeQuery.error ? getErrorMessage(employeeQuery.error) : 'Employee not found.'}
+          {employeeQuery.error ? getErrorMessage(employeeQuery.error) : t('employees.notFound')}
         </p>
         <Button variant="outline" size="sm" className="mt-4" onClick={() => void navigate('/employees')}>
-          Back to employees
+          {t('employees.backToEmployees')}
         </Button>
       </div>
     )
@@ -109,7 +119,7 @@ export function EmployeeDetailsPage() {
           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="size-4" />
-          Back to employees
+          {t('employees.backToEmployees')}
         </Link>
       </div>
 
@@ -118,22 +128,20 @@ export function EmployeeDetailsPage() {
         description={employee.employeeCode}
         actions={
           <div className="flex items-center gap-2">
-            <Badge variant={STATUS_BADGE_VARIANT[employee.status]}>
-              {employee.status.charAt(0) + employee.status.slice(1).toLowerCase()}
-            </Badge>
+            <Badge variant={STATUS_BADGE_VARIANT[employee.status]}>{t(EMPLOYEE_STATUS_KEYS[employee.status])}</Badge>
             {canUpdate && (
               <Button variant="outline" onClick={() => setFormOpen(true)}>
-                Edit
+                {t('common.edit')}
               </Button>
             )}
             {canDelete && employee.status !== 'ARCHIVED' && (
               <Button variant="destructive" onClick={() => setConfirmingArchive(true)}>
-                Archive
+                {t('common.archive')}
               </Button>
             )}
             {canDelete && employee.status === 'ARCHIVED' && (
               <Button onClick={() => void handleRestore()} disabled={restoreEmployee.isPending}>
-                {restoreEmployee.isPending ? 'Restoring…' : 'Restore'}
+                {restoreEmployee.isPending ? t('common.restoring') : t('common.restore')}
               </Button>
             )}
           </div>
@@ -142,20 +150,20 @@ export function EmployeeDetailsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Employee details</CardTitle>
+          <CardTitle className="text-base">{t('employees.detailsTitle')}</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-2 gap-4">
-          <Field label="Employee code" value={employee.employeeCode} />
-          <Field label="Email" value={employee.email ?? '—'} />
-          <Field label="Phone" value={employee.phone ?? '—'} />
-          <Field label="Employment type" value={EMPLOYMENT_TYPE_LABELS[employee.employmentType]} />
-          <Field label="Department" value={employee.departmentName ?? '—'} />
-          <Field label="Position" value={employee.positionTitle ?? '—'} />
-          <Field label="Start date" value={formatDate(employee.startDate)} />
-          <Field label="End date" value={formatDate(employee.endDate)} />
+          <Field label={t('employees.employeeCodeLabel')} value={employee.employeeCode} />
+          <Field label={t('common.email')} value={employee.email ?? '—'} />
+          <Field label={t('common.phone')} value={employee.phone ?? '—'} />
+          <Field label={t('employees.employmentType')} value={t(EMPLOYMENT_TYPE_KEYS[employee.employmentType])} />
+          <Field label={t('employees.department')} value={employee.departmentName ?? '—'} />
+          <Field label={t('employees.position')} value={employee.positionTitle ?? '—'} />
+          <Field label={t('employees.startDate')} value={formatDate(employee.startDate)} />
+          <Field label={t('employees.endDate')} value={formatDate(employee.endDate)} />
           {employee.notes && (
             <div className="col-span-2">
-              <p className="text-xs text-muted-foreground">Notes</p>
+              <p className="text-xs text-muted-foreground">{t('common.notes')}</p>
               <p className="mt-0.5 text-sm whitespace-pre-wrap">{employee.notes}</p>
             </div>
           )}
@@ -167,9 +175,9 @@ export function EmployeeDetailsPage() {
       <ConfirmDialog
         open={confirmingArchive}
         onOpenChange={setConfirmingArchive}
-        title="Archive employee"
-        description={`Are you sure you want to archive "${employee.firstName} ${employee.lastName}"? They will be hidden from the default list but can be restored at any time.`}
-        confirmLabel="Archive"
+        title={t('employees.archiveTitle')}
+        description={t('employees.archiveDescription', { name: `${employee.firstName} ${employee.lastName}` })}
+        confirmLabel={t('common.archive')}
         isLoading={archiveEmployee.isPending}
         onConfirm={() => void confirmArchive()}
       />

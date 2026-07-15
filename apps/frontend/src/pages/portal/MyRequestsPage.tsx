@@ -1,6 +1,7 @@
 import { Loader2, Plus } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -8,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { useCancelRequest, useRequests } from '@/hooks/useRequests'
 import { getErrorMessage } from '@/lib/errors'
+import { formatLongDate, type AppLocale } from '@/lib/date'
 import type { EmployeeRequest, RequestStatus } from '@/types/request.types'
 import { RequestFormDialog } from '@/pages/portal/RequestFormDialog'
 
@@ -18,11 +20,17 @@ const STATUS_BADGE_VARIANT: Record<RequestStatus, 'secondary' | 'success' | 'des
   CANCELLED: 'outline',
 }
 
-function formatDate(value: string): string {
-  return new Date(value).toLocaleDateString()
+const STATUS_LABEL_KEYS: Record<RequestStatus, string> = {
+  PENDING: 'requests.pending',
+  APPROVED: 'requests.approved',
+  REJECTED: 'requests.rejected',
+  CANCELLED: 'requests.cancelled',
 }
 
 export function MyRequestsPage() {
+  const { t, i18n } = useTranslation()
+  const locale: AppLocale = i18n.language === 'en' ? 'en' : 'lt'
+  const formatDate = (value: string) => formatLongDate(value.slice(0, 10), locale)
   const [formOpen, setFormOpen] = useState(false)
   const [cancellingRequest, setCancellingRequest] = useState<EmployeeRequest | undefined>(undefined)
 
@@ -33,7 +41,7 @@ export function MyRequestsPage() {
     if (!cancellingRequest) return
     try {
       await cancelRequest.mutateAsync(cancellingRequest.id)
-      toast.success('Request cancelled')
+      toast.success(t('requests.requestCancelled'))
       setCancellingRequest(undefined)
     } catch (error) {
       toast.error(getErrorMessage(error))
@@ -46,10 +54,10 @@ export function MyRequestsPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold">My requests</h1>
-          <p className="text-sm text-muted-foreground">Vacation, sick leave, and other absence requests.</p>
+          <h1 className="text-xl font-semibold">{t('requests.myRequestsTitle')}</h1>
+          <p className="text-sm text-muted-foreground">{t('requests.myRequestsDescription')}</p>
         </div>
-        <Button size="icon" onClick={() => setFormOpen(true)} aria-label="New request">
+        <Button size="icon" onClick={() => setFormOpen(true)} aria-label={t('requests.newRequest')}>
           <Plus />
         </Button>
       </div>
@@ -57,7 +65,7 @@ export function MyRequestsPage() {
       {requestsQuery.isLoading && (
         <div className="flex items-center justify-center gap-2 py-16 text-muted-foreground">
           <Loader2 className="size-4 animate-spin" />
-          Loading requests…
+          {t('requests.loadingRequests')}
         </div>
       )}
 
@@ -68,7 +76,7 @@ export function MyRequestsPage() {
       {!requestsQuery.isLoading && !requestsQuery.isError && requests.length === 0 && (
         <Card>
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            No requests yet. Tap + to submit your first one.
+            {t('requests.noneYet')}
           </CardContent>
         </Card>
       )}
@@ -93,14 +101,14 @@ export function MyRequestsPage() {
                     </p>
                     {request.comment && <p className="mt-1 text-sm">{request.comment}</p>}
                     {request.status !== 'PENDING' && request.reviewComment && (
-                      <p className="mt-1 text-xs text-muted-foreground">Manager note: {request.reviewComment}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{t('requests.managerNotePrefix', { note: request.reviewComment })}</p>
                     )}
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-2">
-                    <Badge variant={STATUS_BADGE_VARIANT[request.status]}>{request.status}</Badge>
+                    <Badge variant={STATUS_BADGE_VARIANT[request.status]}>{t(STATUS_LABEL_KEYS[request.status])}</Badge>
                     {request.status === 'PENDING' && (
                       <Button variant="outline" size="sm" onClick={() => setCancellingRequest(request)}>
-                        Cancel
+                        {t('requests.cancel')}
                       </Button>
                     )}
                   </div>
@@ -116,9 +124,9 @@ export function MyRequestsPage() {
       <ConfirmDialog
         open={Boolean(cancellingRequest)}
         onOpenChange={(open) => !open && setCancellingRequest(undefined)}
-        title="Cancel request"
-        description={`Are you sure you want to withdraw your ${cancellingRequest?.absenceTypeName.toLowerCase()} request?`}
-        confirmLabel="Cancel request"
+        title={t('requests.cancelRequestTitle')}
+        description={t('requests.cancelRequestDescription', { type: cancellingRequest?.absenceTypeName.toLowerCase() })}
+        confirmLabel={t('requests.cancel')}
         isLoading={cancelRequest.isPending}
         onConfirm={() => void confirmCancel()}
       />

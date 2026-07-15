@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -17,19 +18,16 @@ import {
   MONTHLY_HOURS_STATUS_COLORS,
 } from '@/lib/monthly-hours'
 import { getErrorMessage } from '@/lib/errors'
+import { getMonthNames, getWeekdayShortLabels, isoWeekday, type AppLocale } from '@/lib/date'
 import type { AbsenceType } from '@/types/absence-type.types'
 import type { ScheduleAssignment } from '@/types/schedule.types'
 import type { ShiftTemplate } from '@/types/shift-template.types'
 
-function greeting(): string {
+function greetingKey(): string {
   const hour = new Date().getHours()
-  if (hour < 12) return 'Good morning'
-  if (hour < 18) return 'Good afternoon'
-  return 'Good evening'
-}
-
-function formatDayLabel(date: string): string {
-  return new Date(date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
+  if (hour < 12) return 'portal.goodMorning'
+  if (hour < 18) return 'portal.goodAfternoon'
+  return 'portal.goodEvening'
 }
 
 function addMonths(year: number, month: number, delta: number): { year: number; month: number } {
@@ -38,6 +36,13 @@ function addMonths(year: number, month: number, delta: number): { year: number; 
 }
 
 export function EmployeeDashboardPage() {
+  const { t, i18n } = useTranslation()
+  const locale: AppLocale = i18n.language === 'en' ? 'en' : 'lt'
+  const monthLabels = getMonthNames(locale)
+  const weekdayLabels = getWeekdayShortLabels(locale)
+  function formatDayLabel(date: string): string {
+    return `${weekdayLabels[isoWeekday(date) - 1]}, ${monthLabels[Number(date.slice(5, 7)) - 1]} ${Number(date.slice(-2))}`
+  }
   const today = new Date()
   const todayKey = today.toISOString().slice(0, 10)
   const year = today.getFullYear()
@@ -131,7 +136,7 @@ export function EmployeeDashboardPage() {
     return (
       <div className="flex items-center justify-center gap-2 py-16 text-muted-foreground">
         <Loader2 className="size-4 animate-spin" />
-        Loading your dashboard…
+        {t('portal.loadingDashboard')}
       </div>
     )
   }
@@ -139,7 +144,7 @@ export function EmployeeDashboardPage() {
   if (profileQuery.isError || !profileQuery.data) {
     return (
       <div className="py-16 text-center text-sm text-destructive">
-        {profileQuery.error ? getErrorMessage(profileQuery.error) : 'No employee profile found for this account.'}
+        {profileQuery.error ? getErrorMessage(profileQuery.error) : t('portal.noProfileFound')}
       </div>
     )
   }
@@ -150,14 +155,14 @@ export function EmployeeDashboardPage() {
     <div className="space-y-4">
       <div>
         <h1 className="text-xl font-semibold">
-          {greeting()}, {employee.firstName}
+          {t(greetingKey())}, {employee.firstName}
         </h1>
-        <p className="text-sm text-muted-foreground">Here's what's coming up for you.</p>
+        <p className="text-sm text-muted-foreground">{t('portal.upcomingSubtitle')}</p>
       </div>
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Next shift</CardTitle>
+          <CardTitle className="text-base">{t('portal.nextShift')}</CardTitle>
         </CardHeader>
         <CardContent>
           {nextShift && nextShiftTemplate ? (
@@ -166,53 +171,55 @@ export function EmployeeDashboardPage() {
               <p className="text-sm text-muted-foreground">
                 {nextShiftTemplate.name} · {nextShiftTemplate.startTime}-{nextShiftTemplate.endTime}
               </p>
-              <p className="text-xs text-muted-foreground">{employee.departmentName ?? 'No department'}</p>
+              <p className="text-xs text-muted-foreground">{employee.departmentName ?? t('portal.noDepartment')}</p>
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">No upcoming shifts scheduled yet.</p>
+            <p className="text-sm text-muted-foreground">{t('portal.noUpcomingShift')}</p>
           )}
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Monthly hours</CardTitle>
+          <CardTitle className="text-base">{t('portal.monthlyHours')}</CardTitle>
         </CardHeader>
         <CardContent>
           <p className={`text-2xl font-bold tabular-nums ${MONTHLY_HOURS_STATUS_COLORS[hoursStatus]}`}>
             {formatHours(assignedHours)} / {formatHours(requiredHours)} h
           </p>
           <p className="text-sm text-muted-foreground">
-            {remaining >= 0 ? `Remaining: ${formatHours(remaining)} h` : `Over by ${formatHours(-remaining)} h`}
+            {remaining >= 0
+              ? `${t('scheduler.remaining')}: ${formatHours(remaining)} h`
+              : `${t('scheduler.overBy')} ${formatHours(-remaining)} h`}
           </p>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Upcoming shifts</CardTitle>
+          <CardTitle className="text-base">{t('portal.upcomingShifts')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div>
-            <p className="mb-1.5 text-xs font-medium text-muted-foreground">Today</p>
+            <p className="mb-1.5 text-xs font-medium text-muted-foreground">{t('common.today')}</p>
             {todayList.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nothing scheduled today.</p>
+              <p className="text-sm text-muted-foreground">{t('portal.nothingToday')}</p>
             ) : (
               <div className="space-y-1.5">{todayList.map(renderAssignment)}</div>
             )}
           </div>
           <div>
-            <p className="mb-1.5 text-xs font-medium text-muted-foreground">Tomorrow</p>
+            <p className="mb-1.5 text-xs font-medium text-muted-foreground">{t('common.tomorrow')}</p>
             {tomorrowList.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nothing scheduled tomorrow.</p>
+              <p className="text-sm text-muted-foreground">{t('portal.nothingTomorrow')}</p>
             ) : (
               <div className="space-y-1.5">{tomorrowList.map(renderAssignment)}</div>
             )}
           </div>
           <div>
-            <p className="mb-1.5 text-xs font-medium text-muted-foreground">Next 7 days</p>
+            <p className="mb-1.5 text-xs font-medium text-muted-foreground">{t('common.next7Days')}</p>
             {next7DaysList.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nothing else scheduled this week.</p>
+              <p className="text-sm text-muted-foreground">{t('portal.nothingNext7Days')}</p>
             ) : (
               <div className="space-y-1.5">{next7DaysList.map(renderAssignment)}</div>
             )}
@@ -222,15 +229,15 @@ export function EmployeeDashboardPage() {
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-base">My requests</CardTitle>
+          <CardTitle className="text-base">{t('portal.myRequests')}</CardTitle>
           <Link to="/my-requests" className="text-xs font-medium text-primary hover:underline">
-            View all
+            {t('common.viewAll')}
           </Link>
         </CardHeader>
         <CardContent className="flex gap-2">
-          <Badge variant="secondary">Pending: {pendingCount}</Badge>
-          <Badge variant="success">Approved: {approvedCount}</Badge>
-          <Badge variant="destructive">Rejected: {rejectedCount}</Badge>
+          <Badge variant="secondary">{t('requests.pending')}: {pendingCount}</Badge>
+          <Badge variant="success">{t('requests.approved')}: {approvedCount}</Badge>
+          <Badge variant="destructive">{t('requests.rejected')}: {rejectedCount}</Badge>
         </CardContent>
       </Card>
     </div>

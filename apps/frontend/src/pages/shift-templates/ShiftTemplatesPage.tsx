@@ -1,6 +1,7 @@
 import { Loader2, MoreHorizontal, Plus, Search } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 
 import { PageHeader } from '@/components/layout/PageHeader'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
@@ -26,6 +27,7 @@ import { ShiftTemplateFormDialog } from '@/pages/shift-templates/ShiftTemplateFo
 const NONE_VALUE = '__all__'
 
 export function ShiftTemplatesPage() {
+  const { t } = useTranslation()
   const hasAnyPermission = useAuthStore((state) => state.hasAnyPermission)
   const canCreate = hasAnyPermission([PERMISSIONS.SHIFT_TEMPLATE_CREATE])
   const canUpdate = hasAnyPermission([PERMISSIONS.SHIFT_TEMPLATE_UPDATE])
@@ -61,7 +63,7 @@ export function ShiftTemplatesPage() {
     if (!archivingTemplate) return
     try {
       await archiveShiftTemplate.mutateAsync(archivingTemplate.id)
-      toast.success('Shift template archived')
+      toast.success(t('shiftTemplates.archived'))
       setArchivingTemplate(undefined)
     } catch (error) {
       toast.error(getErrorMessage(error))
@@ -71,7 +73,7 @@ export function ShiftTemplatesPage() {
   async function handleRestore(template: ShiftTemplate) {
     try {
       await restoreShiftTemplate.mutateAsync(template.id)
-      toast.success('Shift template restored')
+      toast.success(t('shiftTemplates.restored'))
     } catch (error) {
       toast.error(getErrorMessage(error))
     }
@@ -82,13 +84,13 @@ export function ShiftTemplatesPage() {
   return (
     <div>
       <PageHeader
-        title="Shift templates"
-        description="Define the shifts your team can be scheduled into."
+        title={t('shiftTemplates.title')}
+        description={t('shiftTemplates.description')}
         actions={
           canCreate && (
             <Button onClick={openCreateDialog}>
               <Plus />
-              New shift template
+              {t('shiftTemplates.newTemplate')}
             </Button>
           )
         }
@@ -101,7 +103,7 @@ export function ShiftTemplatesPage() {
               <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 className="pl-9"
-                placeholder="Search shift templates…"
+                placeholder={t('shiftTemplates.searchPlaceholder')}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -109,12 +111,12 @@ export function ShiftTemplatesPage() {
 
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-40">
-                <SelectValue placeholder="Status" />
+                <SelectValue placeholder={t('common.status')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={NONE_VALUE}>All statuses</SelectItem>
-                <SelectItem value="ACTIVE">Active</SelectItem>
-                <SelectItem value="ARCHIVED">Archived</SelectItem>
+                <SelectItem value={NONE_VALUE}>{t('common.allStatuses')}</SelectItem>
+                <SelectItem value="ACTIVE">{t('common.active')}</SelectItem>
+                <SelectItem value="ARCHIVED">{t('common.archived')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -122,11 +124,11 @@ export function ShiftTemplatesPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Code</TableHead>
-                <TableHead>Hours</TableHead>
-                <TableHead>Break</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{t('common.name')}</TableHead>
+                <TableHead>{t('common.code')}</TableHead>
+                <TableHead>{t('shiftTemplates.hours')}</TableHead>
+                <TableHead>{t('shiftTemplates.break')}</TableHead>
+                <TableHead>{t('common.status')}</TableHead>
                 {(canUpdate || canDelete) && <TableHead className="w-10" />}
               </TableRow>
             </TableHeader>
@@ -136,7 +138,7 @@ export function ShiftTemplatesPage() {
                   <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
                     <div className="flex items-center justify-center gap-2">
                       <Loader2 className="size-4 animate-spin" />
-                      Loading shift templates…
+                      {t('shiftTemplates.loadingTemplates')}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -147,7 +149,7 @@ export function ShiftTemplatesPage() {
                   <TableCell colSpan={6} className="py-8 text-center">
                     <p className="text-sm text-destructive">{getErrorMessage(templatesQuery.error)}</p>
                     <Button variant="outline" size="sm" className="mt-3" onClick={() => void templatesQuery.refetch()}>
-                      Try again
+                      {t('common.tryAgain')}
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -156,9 +158,7 @@ export function ShiftTemplatesPage() {
               {!templatesQuery.isLoading && !templatesQuery.isError && templates.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
-                    {search || statusFilter !== NONE_VALUE
-                      ? 'No shift templates match your filters.'
-                      : 'No shift templates yet. Create your first one to start scheduling.'}
+                    {search || statusFilter !== NONE_VALUE ? t('shiftTemplates.noMatch') : t('shiftTemplates.noneYet')}
                   </TableCell>
                 </TableRow>
               )}
@@ -181,10 +181,10 @@ export function ShiftTemplatesPage() {
                     <TableCell className="text-muted-foreground">
                       {template.startTime}–{template.endTime}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{template.breakMinutes} min</TableCell>
+                    <TableCell className="text-muted-foreground">{template.breakMinutes} {t('shiftTemplates.minutesShort')}</TableCell>
                     <TableCell>
                       <Badge variant={template.active ? 'success' : 'secondary'}>
-                        {template.active ? 'Active' : 'Archived'}
+                        {template.active ? t('common.active') : t('common.archived')}
                       </Badge>
                     </TableCell>
                     {(canUpdate || canDelete) && (
@@ -197,19 +197,19 @@ export function ShiftTemplatesPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             {canUpdate && (
-                              <DropdownMenuItem onClick={() => openEditDialog(template)}>Edit</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => openEditDialog(template)}>{t('common.edit')}</DropdownMenuItem>
                             )}
                             {canDelete && template.active && (
                               <DropdownMenuItem
                                 variant="destructive"
                                 onClick={() => setArchivingTemplate(template)}
                               >
-                                Archive
+                                {t('common.archive')}
                               </DropdownMenuItem>
                             )}
                             {canDelete && !template.active && (
                               <DropdownMenuItem onClick={() => void handleRestore(template)}>
-                                Restore
+                                {t('common.restore')}
                               </DropdownMenuItem>
                             )}
                           </DropdownMenuContent>
@@ -228,9 +228,9 @@ export function ShiftTemplatesPage() {
       <ConfirmDialog
         open={Boolean(archivingTemplate)}
         onOpenChange={(open) => !open && setArchivingTemplate(undefined)}
-        title="Archive shift template"
-        description={`Are you sure you want to archive "${archivingTemplate?.name}"? Past schedules keep showing it, but it can no longer be assigned to new shifts. You can restore it at any time.`}
-        confirmLabel="Archive"
+        title={t('shiftTemplates.archiveTitle')}
+        description={t('shiftTemplates.archiveDescription', { name: archivingTemplate?.name })}
+        confirmLabel={t('common.archive')}
         isLoading={archiveShiftTemplate.isPending}
         onConfirm={() => void confirmArchive()}
       />

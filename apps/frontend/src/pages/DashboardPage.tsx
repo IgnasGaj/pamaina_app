@@ -1,5 +1,6 @@
 import { Briefcase, Building2, Settings, UserPlus, Users } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -10,7 +11,7 @@ import { useCompany, useCompanySettings } from '@/hooks/useCompany'
 import { useDepartments } from '@/hooks/useDepartments'
 import { useEmployees } from '@/hooks/useEmployees'
 import { usePositions } from '@/hooks/usePositions'
-import { BUSINESS_TYPE_LABELS } from '@/lib/company-options'
+import { useBusinessTypeLabel } from '@/lib/company-options'
 import { useAuthStore } from '@/stores/auth.store'
 import { PERMISSIONS } from '@/types/auth.types'
 
@@ -60,6 +61,7 @@ function StatCard({
 }
 
 export function DashboardPage() {
+  const { t } = useTranslation()
   const user = useAuthStore((state) => state.user)
   const hasAnyPermission = useAuthStore((state) => state.hasAnyPermission)
 
@@ -75,47 +77,47 @@ export function DashboardPage() {
   const departmentsQuery = useDepartments({ pageSize: 1 })
   const positionsQuery = usePositions({ pageSize: 1 })
 
-  const businessType = companySettingsQuery.data?.businessType
+  const businessTypeLabel = useBusinessTypeLabel(companySettingsQuery.data?.businessType)
 
   return (
     <div>
       <Card className="mb-6">
         <CardContent className="flex flex-col gap-4 pt-6 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-lg font-semibold tracking-tight">Welcome to Pamaina!</h2>
+            <h2 className="text-lg font-semibold tracking-tight">{t('dashboard.welcomeTitle')}</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               {companyQuery.data?.name ?? '—'}
-              {businessType && (
+              {businessTypeLabel && (
                 <>
                   {' · '}
                   <Badge variant="secondary" className="align-middle">
-                    {BUSINESS_TYPE_LABELS[businessType]}
+                    {businessTypeLabel}
                   </Badge>
                 </>
               )}
             </p>
           </div>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-            {canCreateEmployees && <QuickAction to="/employees" label="Add employee" icon={UserPlus} />}
+            {canCreateEmployees && <QuickAction to="/employees" label={t('dashboard.addEmployee')} icon={UserPlus} />}
             {canCreateDepartments && (
-              <QuickAction to="/organization?tab=departments" label="Create department" icon={Building2} />
+              <QuickAction to="/organization?tab=departments" label={t('dashboard.createDepartment')} icon={Building2} />
             )}
             {user?.roleKey === 'COMPANY_OWNER' && (
-              <QuickAction to="/settings/company" label="Settings" icon={Settings} />
+              <QuickAction to="/settings/company" label={t('dashboard.settings')} icon={Settings} />
             )}
           </div>
         </CardContent>
       </Card>
 
       <PageHeader
-        title={`Welcome back, ${user?.firstName ?? ''}`}
-        description="Here's a snapshot of your workforce."
+        title={t('dashboard.welcomeBack', { name: user?.firstName ?? '' })}
+        description={t('dashboard.snapshotDescription')}
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {canReadEmployees && (
           <StatCard
-            label="Active employees"
+            label={t('dashboard.activeEmployees')}
             value={employeesQuery.data?.meta.totalItems}
             icon={Users}
             isLoading={employeesQuery.isLoading}
@@ -123,7 +125,7 @@ export function DashboardPage() {
         )}
         {canReadDepartments && (
           <StatCard
-            label="Departments"
+            label={t('dashboard.departments')}
             value={departmentsQuery.data?.meta.totalItems}
             icon={Building2}
             isLoading={departmentsQuery.isLoading}
@@ -131,7 +133,7 @@ export function DashboardPage() {
         )}
         {canReadPositions && (
           <StatCard
-            label="Positions"
+            label={t('dashboard.positions')}
             value={positionsQuery.data?.meta.totalItems}
             icon={Briefcase}
             isLoading={positionsQuery.isLoading}
@@ -142,15 +144,15 @@ export function DashboardPage() {
       {canReadEmployees && (
         <Card className="mt-6">
           <CardHeader>
-            <CardTitle className="text-base">Recently added employees</CardTitle>
+            <CardTitle className="text-base">{t('dashboard.recentlyAddedEmployees')}</CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Code</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>{t('common.name')}</TableHead>
+                  <TableHead>{t('common.code')}</TableHead>
+                  <TableHead>{t('common.status')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -164,7 +166,7 @@ export function DashboardPage() {
                     <TableCell>{employee.employeeCode}</TableCell>
                     <TableCell>
                       <Badge variant={employee.status === 'ACTIVE' ? 'success' : 'secondary'}>
-                        {employee.status}
+                        {employee.status === 'ACTIVE' ? t('common.active') : t('common.archived')}
                       </Badge>
                     </TableCell>
                   </TableRow>
@@ -172,7 +174,7 @@ export function DashboardPage() {
                 {employeesQuery.data?.items.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={3} className="py-6 text-center text-muted-foreground">
-                      No employees yet.
+                      {t('dashboard.noEmployeesYet')}
                     </TableCell>
                   </TableRow>
                 )}

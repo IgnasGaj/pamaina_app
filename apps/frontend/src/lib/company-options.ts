@@ -1,41 +1,54 @@
+import { useTranslation } from 'react-i18next'
+
 import type { BusinessType, VacationPolicyType, WorkWeekType } from '@/types/company.types'
 
-export const BUSINESS_TYPE_OPTIONS: { value: BusinessType; label: string; description: string }[] = [
-  { value: 'FACTORY', label: 'Factory', description: 'Manufacturing and production sites' },
-  { value: 'RESTAURANT', label: 'Restaurant', description: 'Cafes, restaurants, and food service' },
-  { value: 'RETAIL', label: 'Retail', description: 'Shops and storefronts' },
-  { value: 'WAREHOUSE', label: 'Warehouse', description: 'Storage and fulfillment centers' },
-  { value: 'LOGISTICS', label: 'Logistics', description: 'Transport and delivery operations' },
-  { value: 'OFFICE', label: 'Office', description: 'Corporate and administrative teams' },
-  { value: 'OTHER', label: 'Other', description: "Doesn't fit the categories above" },
-]
+const BUSINESS_TYPE_VALUES: BusinessType[] = ['FACTORY', 'RESTAURANT', 'RETAIL', 'WAREHOUSE', 'LOGISTICS', 'OFFICE', 'OTHER']
+const WORK_WEEK_TYPE_VALUES: WorkWeekType[] = ['FIVE_DAY', 'SIX_DAY', 'SUMMARIZED']
+const VACATION_POLICY_TYPE_VALUES: VacationPolicyType[] = ['ANNUAL_ALLOCATION', 'MONTHLY_ACCRUAL']
 
-export const BUSINESS_TYPE_LABELS: Record<BusinessType, string> = Object.fromEntries(
-  BUSINESS_TYPE_OPTIONS.map((option) => [option.value, option.label]),
-) as Record<BusinessType, string>
+/** Translated option lists for the onboarding wizard's option cards. */
+export function useBusinessTypeOptions(): { value: BusinessType; label: string; description: string }[] {
+  const { t } = useTranslation()
+  return BUSINESS_TYPE_VALUES.map((value) => ({
+    value,
+    label: t(`companyOptions.businessType.${value}`),
+    description: t(`companyOptions.businessType.${value}_DESC`),
+  }))
+}
 
-export const WORK_WEEK_TYPE_OPTIONS: { value: WorkWeekType; label: string; description: string }[] = [
-  { value: 'FIVE_DAY', label: '5-day work week', description: 'Standard Monday–Friday schedule' },
-  { value: 'SIX_DAY', label: '6-day work week', description: 'Six working days per week' },
-  {
-    value: 'SUMMARIZED',
-    label: 'Summarized working time',
-    description: 'Aggregated hours over a longer accounting period, common for shift work',
-  },
-]
+export function useWorkWeekTypeOptions(): { value: WorkWeekType; label: string; description: string }[] {
+  const { t } = useTranslation()
+  return WORK_WEEK_TYPE_VALUES.map((value) => ({
+    value,
+    label: t(`companyOptions.workWeekType.${value}`),
+    description: t(`companyOptions.workWeekType.${value}_DESC`),
+  }))
+}
 
-export const WORK_WEEK_TYPE_LABELS: Record<WorkWeekType, string> = Object.fromEntries(
-  WORK_WEEK_TYPE_OPTIONS.map((option) => [option.value, option.label]),
-) as Record<WorkWeekType, string>
+export function useVacationPolicyOptions(): { value: VacationPolicyType; label: string; description: string }[] {
+  const { t } = useTranslation()
+  return VACATION_POLICY_TYPE_VALUES.map((value) => ({
+    value,
+    label: t(`companyOptions.vacationPolicy.${value}`),
+    description: t(`companyOptions.vacationPolicy.${value}_DESC`),
+  }))
+}
 
-export const VACATION_POLICY_OPTIONS: { value: VacationPolicyType; label: string; description: string }[] = [
-  { value: 'ANNUAL_ALLOCATION', label: 'Annual allocation', description: 'Employees receive their full leave balance at the start of each year' },
-  { value: 'MONTHLY_ACCRUAL', label: 'Monthly accrual', description: 'Leave balance accrues gradually, month by month' },
-]
+/** For rendering a single stored value (e.g. the Dashboard badge, the onboarding summary). */
+export function useBusinessTypeLabel(value: BusinessType | null | undefined): string | null {
+  const { t } = useTranslation()
+  return value ? t(`companyOptions.businessType.${value}`) : null
+}
 
-export const VACATION_POLICY_LABELS: Record<VacationPolicyType, string> = Object.fromEntries(
-  VACATION_POLICY_OPTIONS.map((option) => [option.value, option.label]),
-) as Record<VacationPolicyType, string>
+export function useWorkWeekTypeLabel(value: WorkWeekType | null | undefined): string | null {
+  const { t } = useTranslation()
+  return value ? t(`companyOptions.workWeekType.${value}`) : null
+}
+
+export function useVacationPolicyLabel(value: VacationPolicyType | null | undefined): string | null {
+  const { t } = useTranslation()
+  return value ? t(`companyOptions.vacationPolicy.${value}`) : null
+}
 
 export const COUNTRY_OPTIONS: { value: string; label: string }[] = [
   { value: 'LT', label: 'Lithuania' },

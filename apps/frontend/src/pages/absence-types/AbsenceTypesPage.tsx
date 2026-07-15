@@ -1,6 +1,7 @@
 import { Loader2, MoreHorizontal, Plus, Search } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 
 import { PageHeader } from '@/components/layout/PageHeader'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
@@ -26,6 +27,7 @@ import { AbsenceTypeFormDialog } from '@/pages/absence-types/AbsenceTypeFormDial
 const NONE_VALUE = '__all__'
 
 export function AbsenceTypesPage() {
+  const { t } = useTranslation()
   const hasAnyPermission = useAuthStore((state) => state.hasAnyPermission)
   const canCreate = hasAnyPermission([PERMISSIONS.ABSENCE_TYPE_CREATE])
   const canUpdate = hasAnyPermission([PERMISSIONS.ABSENCE_TYPE_UPDATE])
@@ -61,7 +63,7 @@ export function AbsenceTypesPage() {
     if (!archivingType) return
     try {
       await archiveAbsenceType.mutateAsync(archivingType.id)
-      toast.success('Absence type archived')
+      toast.success(t('absenceTypes.archived'))
       setArchivingType(undefined)
     } catch (error) {
       toast.error(getErrorMessage(error))
@@ -71,7 +73,7 @@ export function AbsenceTypesPage() {
   async function handleRestore(absenceType: AbsenceType) {
     try {
       await restoreAbsenceType.mutateAsync(absenceType.id)
-      toast.success('Absence type restored')
+      toast.success(t('absenceTypes.restored'))
     } catch (error) {
       toast.error(getErrorMessage(error))
     }
@@ -82,13 +84,13 @@ export function AbsenceTypesPage() {
   return (
     <div>
       <PageHeader
-        title="Absence types"
-        description="Define the non-working entries your team can be scheduled into, like vacation or sick leave."
+        title={t('absenceTypes.title')}
+        description={t('absenceTypes.description')}
         actions={
           canCreate && (
             <Button onClick={openCreateDialog}>
               <Plus />
-              New absence type
+              {t('absenceTypes.newType')}
             </Button>
           )
         }
@@ -101,7 +103,7 @@ export function AbsenceTypesPage() {
               <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 className="pl-9"
-                placeholder="Search absence types…"
+                placeholder={t('absenceTypes.searchPlaceholder')}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -109,12 +111,12 @@ export function AbsenceTypesPage() {
 
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-40">
-                <SelectValue placeholder="Status" />
+                <SelectValue placeholder={t('common.status')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={NONE_VALUE}>All statuses</SelectItem>
-                <SelectItem value="ACTIVE">Active</SelectItem>
-                <SelectItem value="ARCHIVED">Archived</SelectItem>
+                <SelectItem value={NONE_VALUE}>{t('common.allStatuses')}</SelectItem>
+                <SelectItem value="ACTIVE">{t('common.active')}</SelectItem>
+                <SelectItem value="ARCHIVED">{t('common.archived')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -122,9 +124,9 @@ export function AbsenceTypesPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Paid</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{t('common.name')}</TableHead>
+                <TableHead>{t('absenceTypes.paid')}</TableHead>
+                <TableHead>{t('common.status')}</TableHead>
                 {(canUpdate || canDelete) && <TableHead className="w-10" />}
               </TableRow>
             </TableHeader>
@@ -134,7 +136,7 @@ export function AbsenceTypesPage() {
                   <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
                     <div className="flex items-center justify-center gap-2">
                       <Loader2 className="size-4 animate-spin" />
-                      Loading absence types…
+                      {t('absenceTypes.loadingTypes')}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -145,7 +147,7 @@ export function AbsenceTypesPage() {
                   <TableCell colSpan={4} className="py-8 text-center">
                     <p className="text-sm text-destructive">{getErrorMessage(absenceTypesQuery.error)}</p>
                     <Button variant="outline" size="sm" className="mt-3" onClick={() => void absenceTypesQuery.refetch()}>
-                      Try again
+                      {t('common.tryAgain')}
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -154,9 +156,7 @@ export function AbsenceTypesPage() {
               {!absenceTypesQuery.isLoading && !absenceTypesQuery.isError && absenceTypes.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
-                    {search || statusFilter !== NONE_VALUE
-                      ? 'No absence types match your filters.'
-                      : 'No absence types yet. Create your first one to start scheduling.'}
+                    {search || statusFilter !== NONE_VALUE ? t('absenceTypes.noMatch') : t('absenceTypes.noneYet')}
                   </TableCell>
                 </TableRow>
               )}
@@ -175,10 +175,10 @@ export function AbsenceTypesPage() {
                         {absenceType.name}
                       </div>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{absenceType.paid ? 'Paid' : 'Unpaid'}</TableCell>
+                    <TableCell className="text-muted-foreground">{absenceType.paid ? t('absenceTypes.paid') : t('absenceTypes.unpaid')}</TableCell>
                     <TableCell>
                       <Badge variant={absenceType.active ? 'success' : 'secondary'}>
-                        {absenceType.active ? 'Active' : 'Archived'}
+                        {absenceType.active ? t('common.active') : t('common.archived')}
                       </Badge>
                     </TableCell>
                     {(canUpdate || canDelete) && (
@@ -191,19 +191,19 @@ export function AbsenceTypesPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             {canUpdate && (
-                              <DropdownMenuItem onClick={() => openEditDialog(absenceType)}>Edit</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => openEditDialog(absenceType)}>{t('common.edit')}</DropdownMenuItem>
                             )}
                             {canDelete && absenceType.active && (
                               <DropdownMenuItem
                                 variant="destructive"
                                 onClick={() => setArchivingType(absenceType)}
                               >
-                                Archive
+                                {t('common.archive')}
                               </DropdownMenuItem>
                             )}
                             {canDelete && !absenceType.active && (
                               <DropdownMenuItem onClick={() => void handleRestore(absenceType)}>
-                                Restore
+                                {t('common.restore')}
                               </DropdownMenuItem>
                             )}
                           </DropdownMenuContent>
@@ -222,9 +222,9 @@ export function AbsenceTypesPage() {
       <ConfirmDialog
         open={Boolean(archivingType)}
         onOpenChange={(open) => !open && setArchivingType(undefined)}
-        title="Archive absence type"
-        description={`Are you sure you want to archive "${archivingType?.name}"? Past schedules keep showing it, but it can no longer be assigned to new absences. You can restore it at any time.`}
-        confirmLabel="Archive"
+        title={t('absenceTypes.archiveTitle')}
+        description={t('absenceTypes.archiveDescription', { name: archivingType?.name })}
+        confirmLabel={t('common.archive')}
         isLoading={archiveAbsenceType.isPending}
         onConfirm={() => void confirmArchive()}
       />

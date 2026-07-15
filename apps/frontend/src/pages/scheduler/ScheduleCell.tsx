@@ -1,11 +1,14 @@
 import { memo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Textarea } from '@/components/ui/textarea'
+import { formatLongDate, type AppLocale } from '@/lib/date'
 import type { AbsenceType } from '@/types/absence-type.types'
 import type { ScheduleAssignment } from '@/types/schedule.types'
 import type { ShiftTemplate } from '@/types/shift-template.types'
+import type { Holiday } from '@/types/working-time.types'
 
 export interface CellActionParams {
   employeeId: string
@@ -33,6 +36,11 @@ interface ScheduleCellProps {
   employeeName: string
   departmentName: string | null
   positionTitle: string | null
+  /** A Lithuanian public holiday or company non-working day on this date, if any — drives the red/amber background and tooltip. */
+  holiday: Holiday | undefined
+  isWeekend: boolean
+  isToday: boolean
+  locale: AppLocale
   onAction: (params: CellActionParams) => void
 }
 
@@ -63,8 +71,13 @@ function ScheduleCellComponent({
   employeeName,
   departmentName,
   positionTitle,
+  holiday,
+  isWeekend,
+  isToday,
+  locale,
   onAction,
 }: ScheduleCellProps) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [notesDraft, setNotesDraft] = useState(assignment?.notes ?? '')
   const isInteractive = !disabled
@@ -79,16 +92,20 @@ function ScheduleCellComponent({
   const entryLabel = shiftTemplate
     ? `${shiftTemplate.name} (${shiftTemplate.startTime}-${shiftTemplate.endTime})`
     : absenceType
-      ? `${absenceType.name} (${absenceType.paid ? 'Paid' : 'Unpaid'})`
-      : 'No shift'
+      ? `${absenceType.name} (${absenceType.paid ? t('absenceTypes.paid') : t('absenceTypes.unpaid')})`
+      : t('scheduler.noShift')
 
-  const tooltip = [
+  const tooltipParts = [
     employeeName,
-    new Date(date).toLocaleDateString(),
+    formatLongDate(date, locale),
     entryLabel,
-    departmentName ?? 'No department',
-    positionTitle ?? 'No position',
-  ].join(' • ')
+    departmentName ?? t('employees.noDepartment'),
+    positionTitle ?? t('employees.noPosition'),
+  ]
+  if (holiday) {
+    tooltipParts.push(`${holiday.source === 'default' ? t('scheduler.holiday') : t('scheduler.companyNonWorkingDay')}: ${holiday.name}`)
+  }
+  const tooltip = tooltipParts.join(' • ')
 
   function handleSelectShift(shiftTemplateId: string) {
     onAction({ employeeId, date, assignmentId: assignment?.id, shiftTemplateId, absenceTypeId: null })
@@ -122,6 +139,19 @@ function ScheduleCellComponent({
   const cellStyle = color ? { backgroundColor: color, color: getContrastTextColor(color) } : undefined
   const label = shiftTemplate ? shiftTemplate.shortCode : absenceType ? absenceShortLabel(absenceType.name) : ''
 
+  // A shift/absence color always wins; otherwise an empty cell is subtly
+  // tinted so the calendar's structure (weekend/holiday/today) stays visible
+  // even before anything has been scheduled.
+  const emptyCellClass = color
+    ? ''
+    : holiday?.source === 'default'
+      ? 'bg-red-50 dark:bg-red-950/40'
+      : holiday?.source === 'company'
+        ? 'bg-amber-50 dark:bg-amber-950/40'
+        : isWeekend
+          ? 'bg-muted/60'
+          : 'bg-transparent'
+
   const trigger = (
     <button
       type="button"
@@ -129,8 +159,8 @@ function ScheduleCellComponent({
       disabled={!isInteractive}
       style={cellStyle}
       className={`flex size-9 items-center justify-center rounded text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
-        color ? 'hover:brightness-95' : 'bg-transparent text-muted-foreground hover:bg-accent'
-      }`}
+        color ? 'hover:brightness-95' : `text-muted-foreground hover:bg-accent ${emptyCellClass}`
+      } ${isToday ? 'ring-2 ring-primary ring-inset' : ''}`}
     >
       {label}
     </button>
@@ -146,13 +176,11 @@ function ScheduleCellComponent({
       <PopoverContent className="w-56 p-1" align="center">
         <div className="flex flex-col">
           {availableTemplates.length === 0 && availableAbsenceTypes.length === 0 && (
-            <p className="px-2 py-1.5 text-sm text-muted-foreground">
-              No shift templates or absence types yet. Create one first.
-            </p>
+            <p className="px-2 py-1.5 text-sm text-muted-foreground">{t('scheduler.noTemplatesOrTypesYet')}</p>
           )}
 
           {availableTemplates.length > 0 && (
-            <p className="px-2 pt-1 pb-0.5 text-xs font-medium text-muted-foreground">Shifts</p>
+            <p className="px-2 pt-1 pb-0.5 text-xs font-medium text-muted-foreground">{t('scheduler.shifts')}</p>
           )}
           {availableTemplates.map((template) => (
             <button
@@ -174,7 +202,7 @@ function ScheduleCellComponent({
           ))}
 
           {availableAbsenceTypes.length > 0 && (
-            <p className="px-2 pt-2 pb-0.5 text-xs font-medium text-muted-foreground">Absences</p>
+            <p className="px-2 pt-2 pb-0.5 text-xs font-medium text-muted-foreground">{t('scheduler.absences')}</p>
           )}
           {availableAbsenceTypes.map((absence) => (
             <button
@@ -199,22 +227,22 @@ function ScheduleCellComponent({
                 className="mt-1 rounded border-t border-border px-2 py-1.5 pt-2 text-left text-sm text-destructive hover:bg-accent"
                 onClick={handleClear}
               >
-                Clear
+                {t('scheduler.clear')}
               </button>
               <div className="mt-1 border-t border-border px-2 pt-2">
                 <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor={`notes-${assignment.id}`}>
-                  Note (visible to employee)
+                  {t('scheduler.noteLabel')}
                 </label>
                 <Textarea
                   id={`notes-${assignment.id}`}
                   value={notesDraft}
                   onChange={(e) => setNotesDraft(e.target.value)}
-                  placeholder="e.g. Bring forklift license"
+                  placeholder={t('scheduler.notePlaceholder')}
                   rows={2}
                   className="text-sm"
                 />
                 <Button size="sm" className="mt-1.5 w-full" onClick={handleSaveNotes}>
-                  Save note
+                  {t('scheduler.saveNote')}
                 </Button>
               </div>
             </>

@@ -1,6 +1,7 @@
 import { MoreHorizontal, Plus, Search } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 
 import { PageHeader } from '@/components/layout/PageHeader'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
@@ -24,6 +25,7 @@ import { PERMISSIONS } from '@/types/auth.types'
 import type { CompanyUser } from '@/types/user.types'
 
 export function UsersPage() {
+  const { t } = useTranslation()
   const currentUser = useAuthStore((state) => state.user)
   const hasAnyPermission = useAuthStore((state) => state.hasAnyPermission)
   const canCreate = hasAnyPermission([PERMISSIONS.USER_CREATE])
@@ -53,7 +55,7 @@ export function UsersPage() {
     if (!deletingUser) return
     try {
       await deleteUser.mutateAsync(deletingUser.id)
-      toast.success('Team member removed')
+      toast.success(t('users.removed'))
       setDeletingUser(undefined)
     } catch (error) {
       toast.error(getErrorMessage(error))
@@ -63,13 +65,13 @@ export function UsersPage() {
   return (
     <div>
       <PageHeader
-        title="Team members"
-        description="Manage who has access to your Pamaina workspace."
+        title={t('users.title')}
+        description={t('users.description')}
         actions={
           canCreate && (
             <Button onClick={openCreateDialog}>
               <Plus />
-              Invite member
+              {t('users.inviteMember')}
             </Button>
           )
         }
@@ -81,7 +83,7 @@ export function UsersPage() {
             <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               className="pl-9"
-              placeholder="Search team members…"
+              placeholder={t('users.searchPlaceholder')}
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value)
@@ -93,11 +95,11 @@ export function UsersPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Last login</TableHead>
+                <TableHead>{t('common.name')}</TableHead>
+                <TableHead>{t('common.email')}</TableHead>
+                <TableHead>{t('users.role')}</TableHead>
+                <TableHead>{t('common.status')}</TableHead>
+                <TableHead>{t('users.lastLogin')}</TableHead>
                 {(canUpdate || canDelete) && <TableHead className="w-10" />}
               </TableRow>
             </TableHeader>
@@ -111,11 +113,11 @@ export function UsersPage() {
                   <TableCell>{user.roleName}</TableCell>
                   <TableCell>
                     <Badge variant={user.isActive ? 'success' : 'secondary'}>
-                      {user.isActive ? 'Active' : 'Inactive'}
+                      {user.isActive ? t('common.active') : t('common.inactive')}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleDateString() : 'Never'}
+                    {user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleDateString() : t('common.never')}
                   </TableCell>
                   {(canUpdate || canDelete) && (
                     <TableCell>
@@ -127,11 +129,11 @@ export function UsersPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           {canUpdate && (
-                            <DropdownMenuItem onClick={() => openEditDialog(user)}>Edit</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => openEditDialog(user)}>{t('common.edit')}</DropdownMenuItem>
                           )}
                           {canDelete && user.id !== currentUser?.id && (
                             <DropdownMenuItem variant="destructive" onClick={() => setDeletingUser(user)}>
-                              Remove
+                              {t('common.remove')}
                             </DropdownMenuItem>
                           )}
                         </DropdownMenuContent>
@@ -143,7 +145,7 @@ export function UsersPage() {
               {usersQuery.data?.items.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
-                    No team members found.
+                    {t('users.noneFound')}
                   </TableCell>
                 </TableRow>
               )}
@@ -159,9 +161,9 @@ export function UsersPage() {
       <ConfirmDialog
         open={Boolean(deletingUser)}
         onOpenChange={(open) => !open && setDeletingUser(undefined)}
-        title="Remove team member"
-        description={`Are you sure you want to remove "${deletingUser?.firstName} ${deletingUser?.lastName}"? They will lose access immediately.`}
-        confirmLabel="Remove"
+        title={t('users.removeTitle')}
+        description={t('users.removeDescription', { name: `${deletingUser?.firstName} ${deletingUser?.lastName}` })}
+        confirmLabel={t('common.remove')}
         isLoading={deleteUser.isPending}
         onConfirm={() => void confirmDelete()}
       />

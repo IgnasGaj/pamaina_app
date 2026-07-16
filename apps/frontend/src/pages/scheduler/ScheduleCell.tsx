@@ -54,11 +54,6 @@ function getContrastTextColor(hexColor: string): string {
   return luminance > 0.6 ? '#111827' : '#ffffff'
 }
 
-/** Absence types have no dedicated short code — the first 3 letters of the name fit the compact grid cell. */
-function absenceShortLabel(name: string): string {
-  return name.slice(0, 3).toUpperCase()
-}
-
 function ScheduleCellComponent({
   employeeId,
   date,
@@ -92,7 +87,7 @@ function ScheduleCellComponent({
   const entryLabel = shiftTemplate
     ? `${shiftTemplate.name} (${shiftTemplate.startTime}-${shiftTemplate.endTime})`
     : absenceType
-      ? `${absenceType.name} (${absenceType.paid ? t('absenceTypes.paid') : t('absenceTypes.unpaid')})`
+      ? absenceType.name
       : t('scheduler.noShift')
 
   const tooltipParts = [
@@ -137,7 +132,7 @@ function ScheduleCellComponent({
 
   const color = shiftTemplate?.color ?? absenceType?.color
   const cellStyle = color ? { backgroundColor: color, color: getContrastTextColor(color) } : undefined
-  const label = shiftTemplate ? shiftTemplate.shortCode : absenceType ? absenceShortLabel(absenceType.name) : ''
+  const label = shiftTemplate ? shiftTemplate.shortCode : absenceType ? absenceType.code : ''
 
   // A shift/absence color always wins; otherwise an empty cell is subtly
   // tinted so the calendar's structure (weekend/holiday/today) stays visible
@@ -216,7 +211,9 @@ function ScheduleCellComponent({
                 style={{ backgroundColor: absence.color }}
                 aria-hidden
               />
-              <span className="flex-1 truncate">{absence.name}</span>
+              <span className="flex-1 truncate">
+                {absence.code} — {absence.name}
+              </span>
             </button>
           ))}
 

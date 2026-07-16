@@ -1,19 +1,7 @@
 import { Request, Response } from "express";
 import * as absenceTypeService from "@/modules/absence-types/absence-type.service";
-import {
-  CreateAbsenceTypeDto,
-  ListAbsenceTypesQuery,
-  UpdateAbsenceTypeDto,
-} from "@/modules/absence-types/absence-type.dto";
+import { ListAbsenceTypesQuery, UpdateAbsenceTypeDto } from "@/modules/absence-types/absence-type.dto";
 import { sendSuccess } from "@/shared/utils/api-response.util";
-
-export async function create(req: Request, res: Response): Promise<void> {
-  const absenceType = await absenceTypeService.createAbsenceType(
-    req.user!.companyId!,
-    req.body as CreateAbsenceTypeDto,
-  );
-  sendSuccess(res, absenceType, 201);
-}
 
 export async function getById(req: Request, res: Response): Promise<void> {
   const { id } = req.params as { id: string };
@@ -37,16 +25,4 @@ export async function list(req: Request, res: Response): Promise<void> {
     req.query as unknown as ListAbsenceTypesQuery,
   );
   sendSuccess(res, result.items, 200, { pagination: result.meta });
-}
-
-export async function archive(req: Request, res: Response): Promise<void> {
-  const { id } = req.params as { id: string };
-  const absenceType = await absenceTypeService.archiveAbsenceType(req.user!.companyId!, id);
-  sendSuccess(res, absenceType);
-}
-
-export async function restore(req: Request, res: Response): Promise<void> {
-  const { id } = req.params as { id: string };
-  const absenceType = await absenceTypeService.restoreAbsenceType(req.user!.companyId!, id);
-  sendSuccess(res, absenceType);
 }

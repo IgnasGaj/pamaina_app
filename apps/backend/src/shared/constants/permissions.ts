@@ -39,10 +39,10 @@ export const PERMISSIONS = {
   SHIFT_TEMPLATE_UPDATE: "shift_template.update",
   SHIFT_TEMPLATE_DELETE: "shift_template.delete",
 
-  ABSENCE_TYPE_CREATE: "absence_type.create",
+  // No CREATE/DELETE: absence types are a fixed set of four per company
+  // (see the absence-types module) — managers can only read/update them.
   ABSENCE_TYPE_READ: "absence_type.read",
   ABSENCE_TYPE_UPDATE: "absence_type.update",
-  ABSENCE_TYPE_DELETE: "absence_type.delete",
 
   WORKING_TIME_READ: "working_time.read",
   WORKING_TIME_MANAGE: "working_time.manage",

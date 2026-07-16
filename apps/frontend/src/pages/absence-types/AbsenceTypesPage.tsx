@@ -1,133 +1,49 @@
-import { Loader2, MoreHorizontal, Plus, Search } from 'lucide-react'
-import { useState } from 'react'
-import { toast } from 'sonner'
+import { Loader2, Pencil } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { PageHeader } from '@/components/layout/PageHeader'
-import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { useAbsenceTypes, useArchiveAbsenceType, useRestoreAbsenceType } from '@/hooks/useAbsenceTypes'
+import { useAbsenceTypes } from '@/hooks/useAbsenceTypes'
 import { getErrorMessage } from '@/lib/errors'
 import { useAuthStore } from '@/stores/auth.store'
 import { PERMISSIONS } from '@/types/auth.types'
-import type { AbsenceType, AbsenceTypeStatusFilter } from '@/types/absence-type.types'
+import { ABSENCE_TYPE_CODE_ORDER, type AbsenceType } from '@/types/absence-type.types'
 import { AbsenceTypeFormDialog } from '@/pages/absence-types/AbsenceTypeFormDialog'
-
-const NONE_VALUE = '__all__'
 
 export function AbsenceTypesPage() {
   const { t } = useTranslation()
   const hasAnyPermission = useAuthStore((state) => state.hasAnyPermission)
-  const canCreate = hasAnyPermission([PERMISSIONS.ABSENCE_TYPE_CREATE])
   const canUpdate = hasAnyPermission([PERMISSIONS.ABSENCE_TYPE_UPDATE])
-  const canDelete = hasAnyPermission([PERMISSIONS.ABSENCE_TYPE_DELETE])
 
-  const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState(NONE_VALUE)
-  const [formOpen, setFormOpen] = useState(false)
   const [editingType, setEditingType] = useState<AbsenceType | undefined>(undefined)
-  const [archivingType, setArchivingType] = useState<AbsenceType | undefined>(undefined)
 
-  const absenceTypesQuery = useAbsenceTypes({
-    pageSize: 100,
-    search: search || undefined,
-    status: statusFilter === NONE_VALUE ? undefined : (statusFilter as AbsenceTypeStatusFilter),
-    sortBy: 'name',
-    sortOrder: 'asc',
-  })
-  const archiveAbsenceType = useArchiveAbsenceType()
-  const restoreAbsenceType = useRestoreAbsenceType()
-
-  function openCreateDialog() {
-    setEditingType(undefined)
-    setFormOpen(true)
-  }
-
-  function openEditDialog(absenceType: AbsenceType) {
-    setEditingType(absenceType)
-    setFormOpen(true)
-  }
-
-  async function confirmArchive() {
-    if (!archivingType) return
-    try {
-      await archiveAbsenceType.mutateAsync(archivingType.id)
-      toast.success(t('absenceTypes.archived'))
-      setArchivingType(undefined)
-    } catch (error) {
-      toast.error(getErrorMessage(error))
-    }
-  }
-
-  async function handleRestore(absenceType: AbsenceType) {
-    try {
-      await restoreAbsenceType.mutateAsync(absenceType.id)
-      toast.success(t('absenceTypes.restored'))
-    } catch (error) {
-      toast.error(getErrorMessage(error))
-    }
-  }
-
-  const absenceTypes = absenceTypesQuery.data?.items ?? []
+  // isDefault filters out any legacy leftover entries from before this fixed
+  // 4-type model — this page only ever shows the four standard types.
+  const absenceTypesQuery = useAbsenceTypes({ pageSize: 100 })
+  const absenceTypes = useMemo(() => {
+    const defaults = (absenceTypesQuery.data?.items ?? []).filter((type) => type.isDefault)
+    return [...defaults].sort(
+      (a, b) => ABSENCE_TYPE_CODE_ORDER.indexOf(a.code) - ABSENCE_TYPE_CODE_ORDER.indexOf(b.code),
+    )
+  }, [absenceTypesQuery.data])
 
   return (
     <div>
-      <PageHeader
-        title={t('absenceTypes.title')}
-        description={t('absenceTypes.description')}
-        actions={
-          canCreate && (
-            <Button onClick={openCreateDialog}>
-              <Plus />
-              {t('absenceTypes.newType')}
-            </Button>
-          )
-        }
-      />
+      <PageHeader title={t('absenceTypes.title')} description={t('absenceTypes.description')} />
 
       <Card>
         <CardContent className="pt-6">
-          <div className="mb-4 flex flex-wrap items-center gap-3">
-            <div className="relative w-full max-w-sm">
-              <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                className="pl-9"
-                placeholder={t('absenceTypes.searchPlaceholder')}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder={t('common.status')} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={NONE_VALUE}>{t('common.allStatuses')}</SelectItem>
-                <SelectItem value="ACTIVE">{t('common.active')}</SelectItem>
-                <SelectItem value="ARCHIVED">{t('common.archived')}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-16">{t('common.code')}</TableHead>
                 <TableHead>{t('common.name')}</TableHead>
-                <TableHead>{t('absenceTypes.paid')}</TableHead>
                 <TableHead>{t('common.status')}</TableHead>
-                {(canUpdate || canDelete) && <TableHead className="w-10" />}
+                {canUpdate && <TableHead className="w-10" />}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -153,18 +69,19 @@ export function AbsenceTypesPage() {
                 </TableRow>
               )}
 
-              {!absenceTypesQuery.isLoading && !absenceTypesQuery.isError && absenceTypes.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
-                    {search || statusFilter !== NONE_VALUE ? t('absenceTypes.noMatch') : t('absenceTypes.noneYet')}
-                  </TableCell>
-                </TableRow>
-              )}
-
               {!absenceTypesQuery.isLoading &&
                 !absenceTypesQuery.isError &&
                 absenceTypes.map((absenceType) => (
                   <TableRow key={absenceType.id}>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className="font-mono"
+                        style={{ borderColor: absenceType.color, color: absenceType.color }}
+                      >
+                        {absenceType.code}
+                      </Badge>
+                    </TableCell>
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
                         <span
@@ -174,40 +91,20 @@ export function AbsenceTypesPage() {
                         />
                         {absenceType.name}
                       </div>
+                      {absenceType.description && (
+                        <p className="mt-0.5 text-xs text-muted-foreground">{absenceType.description}</p>
+                      )}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{absenceType.paid ? t('absenceTypes.paid') : t('absenceTypes.unpaid')}</TableCell>
                     <TableCell>
                       <Badge variant={absenceType.active ? 'success' : 'secondary'}>
-                        {absenceType.active ? t('common.active') : t('common.archived')}
+                        {absenceType.active ? t('common.active') : t('common.inactive')}
                       </Badge>
                     </TableCell>
-                    {(canUpdate || canDelete) && (
+                    {canUpdate && (
                       <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            {canUpdate && (
-                              <DropdownMenuItem onClick={() => openEditDialog(absenceType)}>{t('common.edit')}</DropdownMenuItem>
-                            )}
-                            {canDelete && absenceType.active && (
-                              <DropdownMenuItem
-                                variant="destructive"
-                                onClick={() => setArchivingType(absenceType)}
-                              >
-                                {t('common.archive')}
-                              </DropdownMenuItem>
-                            )}
-                            {canDelete && !absenceType.active && (
-                              <DropdownMenuItem onClick={() => void handleRestore(absenceType)}>
-                                {t('common.restore')}
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <Button variant="ghost" size="icon" onClick={() => setEditingType(absenceType)} aria-label={t('common.edit')}>
+                          <Pencil />
+                        </Button>
                       </TableCell>
                     )}
                   </TableRow>
@@ -217,16 +114,10 @@ export function AbsenceTypesPage() {
         </CardContent>
       </Card>
 
-      <AbsenceTypeFormDialog open={formOpen} onOpenChange={setFormOpen} absenceType={editingType} />
-
-      <ConfirmDialog
-        open={Boolean(archivingType)}
-        onOpenChange={(open) => !open && setArchivingType(undefined)}
-        title={t('absenceTypes.archiveTitle')}
-        description={t('absenceTypes.archiveDescription', { name: archivingType?.name })}
-        confirmLabel={t('common.archive')}
-        isLoading={archiveAbsenceType.isPending}
-        onConfirm={() => void confirmArchive()}
+      <AbsenceTypeFormDialog
+        open={Boolean(editingType)}
+        onOpenChange={(open) => !open && setEditingType(undefined)}
+        absenceType={editingType}
       />
     </div>
   )

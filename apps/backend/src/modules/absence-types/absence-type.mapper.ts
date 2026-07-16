@@ -5,9 +5,11 @@ export function toAbsenceTypeResponseDto(absenceType: AbsenceType): AbsenceTypeR
   return {
     id: absenceType.id,
     companyId: absenceType.companyId,
+    code: absenceType.code,
     name: absenceType.name,
     color: absenceType.color,
-    paid: absenceType.paid,
+    description: absenceType.description,
+    isDefault: absenceType.isDefault,
     active: absenceType.active,
     createdAt: absenceType.createdAt.toISOString(),
     updatedAt: absenceType.updatedAt.toISOString(),

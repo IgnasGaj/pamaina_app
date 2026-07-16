@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { Controller, useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -15,6 +15,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { useAbsenceTypes } from '@/hooks/useAbsenceTypes'
 import { useCreateRequest } from '@/hooks/useRequests'
 import { getErrorMessage } from '@/lib/errors'
+import { ABSENCE_TYPE_CODE_ORDER } from '@/types/absence-type.types'
 
 function useRequestSchema() {
   const { t } = useTranslation()
@@ -43,7 +44,7 @@ interface RequestFormDialogProps {
 export function RequestFormDialog({ open, onOpenChange, initialAbsenceTypeId }: RequestFormDialogProps) {
   const { t } = useTranslation()
   const requestSchema = useRequestSchema()
-  const absenceTypesQuery = useAbsenceTypes({ pageSize: 100, status: 'ACTIVE' })
+  const absenceTypesQuery = useAbsenceTypes({ pageSize: 100 })
   const createRequest = useCreateRequest()
 
   const {
@@ -78,7 +79,14 @@ export function RequestFormDialog({ open, onOpenChange, initialAbsenceTypeId }: 
     }
   }
 
-  const absenceTypes = absenceTypesQuery.data?.items ?? []
+  // isDefault excludes any legacy leftover types; sorted to Pamaina's fixed P/A/M/L order.
+  const absenceTypes = useMemo(
+    () =>
+      (absenceTypesQuery.data?.items ?? [])
+        .filter((type) => type.active && type.isDefault)
+        .sort((a, b) => ABSENCE_TYPE_CODE_ORDER.indexOf(a.code) - ABSENCE_TYPE_CODE_ORDER.indexOf(b.code)),
+    [absenceTypesQuery.data],
+  )
 
   return (
     <BottomSheet open={open} onOpenChange={onOpenChange} closeLabel={t('common.close')}>
@@ -100,7 +108,7 @@ export function RequestFormDialog({ open, onOpenChange, initialAbsenceTypeId }: 
                 <SelectContent>
                   {absenceTypes.map((absenceType) => (
                     <SelectItem key={absenceType.id} value={absenceType.id}>
-                      {absenceType.name}
+                      {absenceType.code} — {absenceType.name}
                     </SelectItem>
                   ))}
                 </SelectContent>

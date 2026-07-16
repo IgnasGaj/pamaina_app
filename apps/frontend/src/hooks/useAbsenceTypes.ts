@@ -1,18 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import {
-  archiveAbsenceType,
-  createAbsenceType,
-  getAbsenceType,
-  listAbsenceTypes,
-  restoreAbsenceType,
-  updateAbsenceType,
-} from '@/api/absence-types.api'
-import type {
-  CreateAbsenceTypePayload,
-  ListAbsenceTypesQuery,
-  UpdateAbsenceTypePayload,
-} from '@/types/absence-type.types'
+import { getAbsenceType, listAbsenceTypes, updateAbsenceType } from '@/api/absence-types.api'
+import type { ListAbsenceTypesQuery, UpdateAbsenceTypePayload } from '@/types/absence-type.types'
 
 export const absenceTypeKeys = {
   all: ['absence-types'] as const,
@@ -37,43 +26,11 @@ export function useAbsenceType(id: string | undefined) {
   })
 }
 
-export function useCreateAbsenceType() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (payload: CreateAbsenceTypePayload) => createAbsenceType(payload),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: absenceTypeKeys.lists() })
-    },
-  })
-}
-
 export function useUpdateAbsenceType(id: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (payload: UpdateAbsenceTypePayload) => updateAbsenceType(id, payload),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: absenceTypeKeys.lists() })
-      void queryClient.invalidateQueries({ queryKey: absenceTypeKeys.detail(id) })
-    },
-  })
-}
-
-export function useArchiveAbsenceType() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (id: string) => archiveAbsenceType(id),
-    onSuccess: (_data, id) => {
-      void queryClient.invalidateQueries({ queryKey: absenceTypeKeys.lists() })
-      void queryClient.invalidateQueries({ queryKey: absenceTypeKeys.detail(id) })
-    },
-  })
-}
-
-export function useRestoreAbsenceType() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (id: string) => restoreAbsenceType(id),
-    onSuccess: (_data, id) => {
       void queryClient.invalidateQueries({ queryKey: absenceTypeKeys.lists() })
       void queryClient.invalidateQueries({ queryKey: absenceTypeKeys.detail(id) })
     },

@@ -14,26 +14,26 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
+import { Textarea } from '@/components/ui/textarea'
 import { ColorPickerInput } from '@/components/shared/ColorPickerInput'
-import { useCreateAbsenceType, useUpdateAbsenceType } from '@/hooks/useAbsenceTypes'
+import { useUpdateAbsenceType } from '@/hooks/useAbsenceTypes'
 import { getErrorMessage } from '@/lib/errors'
 import type { AbsenceType } from '@/types/absence-type.types'
 
 function useAbsenceTypeSchema() {
   const { t } = useTranslation()
   return z.object({
-    name: z.string().min(1, t('common.nameRequired')).max(100),
     color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, t('common.validHexColor')),
-    paid: z.boolean(),
+    description: z.string().max(500).optional(),
     active: z.boolean(),
   })
 }
 
-type AbsenceTypeFormValues = { name: string; color: string; paid: boolean; active: boolean }
+type AbsenceTypeFormValues = { color: string; description?: string; active: boolean }
 
+/** Edit-only: code and name are fixed for Pamaina's four standard absence types (see the backend service). */
 export function AbsenceTypeFormDialog({
   open,
   onOpenChange,
@@ -45,74 +45,53 @@ export function AbsenceTypeFormDialog({
 }) {
   const { t } = useTranslation()
   const absenceTypeSchema = useAbsenceTypeSchema()
-  const isEditing = Boolean(absenceType)
-  const createAbsenceType = useCreateAbsenceType()
   const updateAbsenceType = useUpdateAbsenceType(absenceType?.id ?? '')
 
   const {
-    register,
     handleSubmit,
     reset,
     control,
+    register,
     formState: { errors },
   } = useForm<AbsenceTypeFormValues>({
     resolver: zodResolver(absenceTypeSchema),
-    defaultValues: { name: '', color: '#F59E0B', paid: true, active: true },
+    defaultValues: { color: '#F59E0B', description: '', active: true },
   })
 
   useEffect(() => {
-    if (open) {
+    if (open && absenceType) {
       reset({
-        name: absenceType?.name ?? '',
-        color: absenceType?.color ?? '#F59E0B',
-        paid: absenceType?.paid ?? true,
-        active: absenceType?.active ?? true,
+        color: absenceType.color,
+        description: absenceType.description ?? '',
+        active: absenceType.active,
       })
     }
   }, [open, absenceType, reset])
 
   async function onSubmit(values: AbsenceTypeFormValues) {
     try {
-      if (isEditing) {
-        await updateAbsenceType.mutateAsync({
-          name: values.name,
-          color: values.color,
-          paid: values.paid,
-          active: values.active,
-        })
-        toast.success(t('absenceTypes.updated'))
-      } else {
-        await createAbsenceType.mutateAsync({
-          name: values.name,
-          color: values.color,
-          paid: values.paid,
-        })
-        toast.success(t('absenceTypes.created'))
-      }
+      await updateAbsenceType.mutateAsync({
+        color: values.color,
+        description: values.description || null,
+        active: values.active,
+      })
+      toast.success(t('absenceTypes.updated'))
       onOpenChange(false)
     } catch (error) {
       toast.error(getErrorMessage(error))
     }
   }
 
-  const isPending = createAbsenceType.isPending || updateAbsenceType.isPending
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{isEditing ? t('absenceTypes.editType') : t('absenceTypes.newType')}</DialogTitle>
-          <DialogDescription>
-            {isEditing ? t('absenceTypes.editDescription') : t('absenceTypes.createDescription')}
-          </DialogDescription>
+          <DialogTitle>
+            {absenceType ? `${absenceType.code} — ${absenceType.name}` : ''}
+          </DialogTitle>
+          <DialogDescription>{t('absenceTypes.editDescription')}</DialogDescription>
         </DialogHeader>
         <form className="space-y-4" onSubmit={(e) => void handleSubmit(onSubmit)(e)}>
-          <div className="space-y-2">
-            <Label htmlFor="name">{t('common.name')}</Label>
-            <Input id="name" placeholder="Vacation" {...register('name')} />
-            {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
-          </div>
-
           <div className="space-y-2">
             <Label htmlFor="color">{t('common.color')}</Label>
             <Controller
@@ -123,36 +102,29 @@ export function AbsenceTypeFormDialog({
             {errors.color && <p className="text-sm text-destructive">{errors.color.message}</p>}
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="description">{t('common.description')}</Label>
+            <Textarea id="description" rows={2} placeholder={t('absenceTypes.descriptionPlaceholder')} {...register('description')} />
+            {errors.description && <p className="text-sm text-destructive">{errors.description.message}</p>}
+          </div>
+
           <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
-            <Label htmlFor="paid" className="cursor-pointer">
-              {t('absenceTypes.paid')}
+            <Label htmlFor="active" className="cursor-pointer">
+              {t('common.active')}
             </Label>
             <Controller
               control={control}
-              name="paid"
-              render={({ field }) => <Switch id="paid" checked={field.value} onCheckedChange={field.onChange} />}
+              name="active"
+              render={({ field }) => <Switch id="active" checked={field.value} onCheckedChange={field.onChange} />}
             />
           </div>
-
-          {isEditing && (
-            <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
-              <Label htmlFor="active" className="cursor-pointer">
-                {t('common.active')}
-              </Label>
-              <Controller
-                control={control}
-                name="active"
-                render={({ field }) => <Switch id="active" checked={field.value} onCheckedChange={field.onChange} />}
-              />
-            </div>
-          )}
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               {t('common.cancel')}
             </Button>
-            <Button type="submit" disabled={isPending}>
-              {isPending ? t('common.saving') : isEditing ? t('common.saveChanges') : t('absenceTypes.newType')}
+            <Button type="submit" disabled={updateAbsenceType.isPending}>
+              {updateAbsenceType.isPending ? t('common.saving') : t('common.saveChanges')}
             </Button>
           </DialogFooter>
         </form>

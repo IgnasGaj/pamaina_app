@@ -1,53 +1,46 @@
 import { Prisma, PrismaClient } from "@prisma/client";
+import { prisma } from "@/config/prisma";
 import { absenceTypeRepository } from "@/modules/absence-types/absence-type.repository";
 import { toAbsenceTypeResponseDto } from "@/modules/absence-types/absence-type.mapper";
 import {
   AbsenceTypeResponseDto,
-  CreateAbsenceTypeDto,
   ListAbsenceTypesQuery,
   UpdateAbsenceTypeDto,
 } from "@/modules/absence-types/absence-type.dto";
-import { ConflictError, NotFoundError } from "@/shared/errors";
+import { NotFoundError } from "@/shared/errors";
 import { PaginatedResult } from "@/shared/types/pagination.types";
 import { buildPaginatedResult } from "@/shared/utils/pagination.util";
 
 type Client = PrismaClient | Prisma.TransactionClient;
 
-/** Seeded for every new company so a manager can assign Vacation/Sick Leave on day one; each may be edited or archived afterwards. */
-export const DEFAULT_ABSENCE_TYPES: readonly { name: string; color: string; paid: boolean }[] = [
-  { name: "Vacation", color: "#F59E0B", paid: true },
-  { name: "Sick Leave", color: "#EF4444", paid: true },
-  { name: "Day Off", color: "#6B7280", paid: false },
-  { name: "Business Trip", color: "#0EA5E9", paid: true },
-  { name: "Training", color: "#8B5CF6", paid: true },
-  { name: "Unpaid Leave", color: "#78716C", paid: false },
+/**
+ * Pamaina is Lithuania-only, so absence types are a fixed, opinionated set
+ * of four — not a customizable catalog. Every company gets exactly these,
+ * seeded once and re-checked idempotently (see ensureDefaultAbsenceTypesForCompany).
+ */
+export const DEFAULT_ABSENCE_TYPES: readonly { code: string; name: string; color: string }[] = [
+  { code: "P", name: "Poilsio diena", color: "#6B7280" },
+  { code: "A", name: "Atostogos", color: "#F59E0B" },
+  { code: "M", name: "Mamadienis / Tėvadienis", color: "#EC4899" },
+  { code: "L", name: "Nedarbingumas", color: "#EF4444" },
 ];
 
-/** Idempotent: skips any default whose name already exists in the company (e.g. re-run against an existing company). */
+/** Idempotent: skips any default whose code already exists in the company (safe to re-run at any time). */
 export async function ensureDefaultAbsenceTypesForCompany(companyId: string, client: Client): Promise<void> {
   for (const defaults of DEFAULT_ABSENCE_TYPES) {
-    const existing = await absenceTypeRepository.findByNameInCompany(defaults.name, companyId, client);
+    const existing = await absenceTypeRepository.findByCodeInCompany(defaults.code, companyId, client);
     if (!existing) {
-      await absenceTypeRepository.create({ companyId, ...defaults }, client);
+      await absenceTypeRepository.create({ companyId, ...defaults, isDefault: true }, client);
     }
   }
 }
 
-export async function createAbsenceType(
-  companyId: string,
-  dto: CreateAbsenceTypeDto,
-): Promise<AbsenceTypeResponseDto> {
-  const existing = await absenceTypeRepository.findByNameInCompany(dto.name, companyId);
-  if (existing) {
-    throw new ConflictError("An absence type with this name already exists");
+/** Backfills the four standard types for every existing company — run at seed time and once at server startup. */
+export async function ensureDefaultAbsenceTypesForAllCompanies(client: Client = prisma): Promise<void> {
+  const companies = await client.company.findMany({ select: { id: true } });
+  for (const company of companies) {
+    await ensureDefaultAbsenceTypesForCompany(company.id, client);
   }
-  const absenceType = await absenceTypeRepository.create({
-    companyId,
-    name: dto.name,
-    color: dto.color,
-    paid: dto.paid,
-  });
-  return toAbsenceTypeResponseDto(absenceType);
 }
 
 export async function getAbsenceTypeByIdOrThrow(companyId: string, id: string): Promise<AbsenceTypeResponseDto> {
@@ -58,6 +51,7 @@ export async function getAbsenceTypeByIdOrThrow(companyId: string, id: string): 
   return toAbsenceTypeResponseDto(absenceType);
 }
 
+/** Only color/description/active are ever accepted here — code and name are immutable by construction (see the DTO). */
 export async function updateAbsenceType(
   companyId: string,
   id: string,
@@ -67,14 +61,6 @@ export async function updateAbsenceType(
   if (!existing) {
     throw new NotFoundError("Absence type");
   }
-
-  if (dto.name && dto.name !== existing.name) {
-    const nameTaken = await absenceTypeRepository.findByNameInCompany(dto.name, companyId);
-    if (nameTaken) {
-      throw new ConflictError("An absence type with this name already exists");
-    }
-  }
-
   const updated = await absenceTypeRepository.update(id, dto);
   return toAbsenceTypeResponseDto(updated);
 }
@@ -83,31 +69,6 @@ export async function listAbsenceTypes(
   companyId: string,
   query: ListAbsenceTypesQuery,
 ): Promise<PaginatedResult<AbsenceTypeResponseDto>> {
-  const { items, total } = await absenceTypeRepository.findMany(
-    companyId,
-    { search: query.search, status: query.status },
-    { sortBy: query.sortBy, sortOrder: query.sortOrder },
-    query,
-  );
+  const { items, total } = await absenceTypeRepository.findMany(companyId, query);
   return buildPaginatedResult(items.map(toAbsenceTypeResponseDto), query, total);
-}
-
-export async function archiveAbsenceType(companyId: string, id: string): Promise<AbsenceTypeResponseDto> {
-  const existing = await absenceTypeRepository.findByIdInCompany(id, companyId);
-  if (!existing) {
-    throw new NotFoundError("Absence type");
-  }
-  await absenceTypeRepository.archive(id);
-  const updated = await absenceTypeRepository.findByIdInCompany(id, companyId);
-  return toAbsenceTypeResponseDto(updated!);
-}
-
-export async function restoreAbsenceType(companyId: string, id: string): Promise<AbsenceTypeResponseDto> {
-  const existing = await absenceTypeRepository.findByIdInCompany(id, companyId);
-  if (!existing) {
-    throw new NotFoundError("Absence type");
-  }
-  await absenceTypeRepository.restore(id);
-  const updated = await absenceTypeRepository.findByIdInCompany(id, companyId);
-  return toAbsenceTypeResponseDto(updated!);
 }

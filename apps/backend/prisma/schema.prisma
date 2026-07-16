@@ -353,19 +353,29 @@ model Employee {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Absence types — company-defined non-working entries (vacation, sick
-// leave, ...). Mutually exclusive with ShiftTemplate on a ScheduleAssignment.
+// Absence types — exactly four standard Lithuanian non-working entries per
+// company (P/A/M/L, see AbsenceTypeService.DEFAULT_ABSENCE_TYPES). Custom
+// types are not supported; code/name are fixed, managers may only edit
+// color/description/active. Mutually exclusive with ShiftTemplate on a
+// ScheduleAssignment.
 // ─────────────────────────────────────────────────────────────────────────
 
 model AbsenceType {
   id        String @id @default(uuid())
   companyId String @map("company_id")
 
-  name  String
+  /// Fixed short code shown in the scheduler grid (e.g. "P"). Immutable.
+  code String
+  /// Fixed full display name (e.g. "Poilsio diena"). Immutable.
+  name String
   /// Hex color used for the cell background (e.g. "#F59E0B").
-  color String  @default("#F59E0B")
-  /// Whether this absence counts as paid time off.
-  paid  Boolean @default(true)
+  color String @default("#F59E0B")
+  /// Optional manager-facing note — the only free-text field managers may edit.
+  description String?
+  /// True for the four seeded standard types. Legacy rows predating this
+  /// model (kept only so historical assignments/requests still resolve)
+  /// are false and hidden from every UI list.
+  isDefault Boolean @default(true) @map("is_default")
 
   active    Boolean  @default(true)
   createdAt DateTime @default(now()) @map("created_at")
@@ -375,7 +385,7 @@ model AbsenceType {
   assignments ScheduleAssignment[]
   requests    EmployeeRequest[]
 
-  @@unique([companyId, name])
+  @@unique([companyId, code])
   @@index([companyId])
   @@index([companyId, active])
   @@map("absence_types")

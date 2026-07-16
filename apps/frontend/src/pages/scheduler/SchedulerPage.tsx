@@ -35,7 +35,7 @@ import type { EmployeeMonthlyHours } from '@/pages/scheduler/EmployeeRow'
 import { ScheduleGrid } from '@/pages/scheduler/ScheduleGrid'
 import type { CellActionParams } from '@/pages/scheduler/ScheduleCell'
 import { cellKey, dateKey, daysInMonth } from '@/pages/scheduler/schedule-grid.utils'
-import type { AbsenceType } from '@/types/absence-type.types'
+import { ABSENCE_TYPE_CODE_ORDER, type AbsenceType } from '@/types/absence-type.types'
 import type { ScheduleAssignment } from '@/types/schedule.types'
 import type { ShiftTemplate } from '@/types/shift-template.types'
 import type { Holiday } from '@/types/working-time.types'
@@ -177,8 +177,14 @@ export function SchedulerPage() {
     return map
   }, [absenceTypesQuery.data])
 
+  // isDefault excludes any legacy leftover types from before the fixed
+  // 4-type model — only Pamaina's four standard absences are assignable,
+  // always shown in the same P/A/M/L order.
   const availableAbsenceTypes = useMemo(
-    () => (absenceTypesQuery.data?.items ?? []).filter((absenceType) => absenceType.active),
+    () =>
+      (absenceTypesQuery.data?.items ?? [])
+        .filter((absenceType) => absenceType.active && absenceType.isDefault)
+        .sort((a, b) => ABSENCE_TYPE_CODE_ORDER.indexOf(a.code) - ABSENCE_TYPE_CODE_ORDER.indexOf(b.code)),
     [absenceTypesQuery.data],
   )
 

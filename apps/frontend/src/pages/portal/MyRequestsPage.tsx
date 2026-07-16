@@ -1,5 +1,5 @@
-import { Loader2, Plus } from 'lucide-react'
-import { useState } from 'react'
+import { Loader2 } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
 
@@ -11,6 +11,7 @@ import { useAbsenceTypes } from '@/hooks/useAbsenceTypes'
 import { useCancelRequest, useRequests } from '@/hooks/useRequests'
 import { getErrorMessage } from '@/lib/errors'
 import { formatLongDate, type AppLocale } from '@/lib/date'
+import { ABSENCE_TYPE_CODE_ORDER } from '@/types/absence-type.types'
 import type { EmployeeRequest, RequestStatus } from '@/types/request.types'
 import { RequestFormDialog } from '@/pages/portal/RequestFormDialog'
 
@@ -36,11 +37,11 @@ export function MyRequestsPage() {
   const [initialAbsenceTypeId, setInitialAbsenceTypeId] = useState<string | undefined>(undefined)
   const [cancellingRequest, setCancellingRequest] = useState<EmployeeRequest | undefined>(undefined)
 
-  const absenceTypesQuery = useAbsenceTypes({ pageSize: 100, status: 'ACTIVE' })
+  const absenceTypesQuery = useAbsenceTypes({ pageSize: 100 })
   const requestsQuery = useRequests({ pageSize: 100 })
   const cancelRequest = useCancelRequest()
 
-  function openForm(absenceTypeId?: string) {
+  function openForm(absenceTypeId: string) {
     setInitialAbsenceTypeId(absenceTypeId)
     setFormOpen(true)
   }
@@ -56,7 +57,14 @@ export function MyRequestsPage() {
     }
   }
 
-  const absenceTypes = absenceTypesQuery.data?.items ?? []
+  // isDefault excludes any legacy leftover types; sorted to Pamaina's fixed P/A/M/L order.
+  const absenceTypes = useMemo(
+    () =>
+      (absenceTypesQuery.data?.items ?? [])
+        .filter((type) => type.active && type.isDefault)
+        .sort((a, b) => ABSENCE_TYPE_CODE_ORDER.indexOf(a.code) - ABSENCE_TYPE_CODE_ORDER.indexOf(b.code)),
+    [absenceTypesQuery.data],
+  )
   const requests = requestsQuery.data?.items ?? []
 
   return (
@@ -82,19 +90,11 @@ export function MyRequestsPage() {
               >
                 <span className="size-3 rounded-full" style={{ backgroundColor: absenceType.color }} aria-hidden />
               </span>
-              <span className="text-sm font-semibold leading-tight">{absenceType.name}</span>
+              <span className="text-sm font-semibold leading-tight">
+                {absenceType.code} — {absenceType.name}
+              </span>
             </button>
           ))}
-          <button
-            type="button"
-            onClick={() => openForm(undefined)}
-            className="flex flex-col items-start gap-2 rounded-2xl border border-dashed border-border bg-card p-4 text-left shadow-xs active:scale-[0.97] transition-transform"
-          >
-            <span className="flex size-9 items-center justify-center rounded-full bg-muted">
-              <Plus className="size-4 text-muted-foreground" />
-            </span>
-            <span className="text-sm font-semibold leading-tight">{t('requests.other')}</span>
-          </button>
         </div>
       </div>
 

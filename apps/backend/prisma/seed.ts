@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { ALL_PERMISSIONS } from "@/shared/constants/permissions";
 import { ensureGlobalSuperAdminRole } from "@/modules/roles/role.service";
+import { ensureDefaultAbsenceTypesForAllCompanies } from "@/modules/absence-types/absence-type.service";
 import { hashPassword } from "@/shared/utils/password.util";
 
 const prisma = new PrismaClient();
@@ -32,10 +33,8 @@ const PERMISSION_DESCRIPTIONS: Record<string, string> = {
   "shift_template.read": "View shift templates",
   "shift_template.update": "Update shift templates",
   "shift_template.delete": "Archive or restore shift templates",
-  "absence_type.create": "Create absence types",
   "absence_type.read": "View absence types",
-  "absence_type.update": "Update absence types",
-  "absence_type.delete": "Archive or restore absence types",
+  "absence_type.update": "Update absence types (color, description, active)",
   "working_time.read": "View required-hours calculations and holidays",
   "working_time.manage": "Manage company-specific non-working days",
   "request.create": "Submit absence/leave requests",
@@ -84,9 +83,16 @@ async function seedSuperAdmin(): Promise<void> {
   console.log(`Created super admin ${email}. Change the password immediately in production.`);
 }
 
+async function seedDefaultAbsenceTypes(): Promise<void> {
+  await ensureDefaultAbsenceTypesForAllCompanies(prisma);
+  // eslint-disable-next-line no-console
+  console.log("Ensured the four standard absence types (P/A/M/L) for every company.");
+}
+
 async function main(): Promise<void> {
   await seedPermissions();
   await seedSuperAdmin();
+  await seedDefaultAbsenceTypes();
 }
 
 main()

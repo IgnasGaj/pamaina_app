@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Copy, Loader2, Pencil, Plus, RefreshCw } from 'lucide-react'
+import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Copy, Download, Loader2, Pencil, Plus, Printer, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
 
@@ -8,10 +8,18 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
+import { ScheduleExportDialog } from '@/pages/scheduler/ScheduleExportDialog'
+import type { ScheduleExportFormat } from '@/types/schedule-export.types'
 import { useAbsenceTypes } from '@/hooks/useAbsenceTypes'
 import { useDepartments } from '@/hooks/useDepartments'
 import { usePositions } from '@/hooks/usePositions'
@@ -58,6 +66,7 @@ export function SchedulerPage() {
   const [sortBy, setSortBy] = useState<SortBy>('name')
   const [editingUnlocked, setEditingUnlocked] = useState(false)
   const [confirmEditOpen, setConfirmEditOpen] = useState(false)
+  const [exportFormat, setExportFormat] = useState<ScheduleExportFormat | null>(null)
 
   const rosterQuery = useSchedulerRoster()
   const departmentsQuery = useDepartments({ pageSize: 100 })
@@ -336,6 +345,23 @@ export function SchedulerPage() {
               {schedule.updatedByName && (
                 <span className="text-xs text-muted-foreground">{t('scheduler.lastUpdatedBy', { name: schedule.updatedByName })}</span>
               )}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline">
+                    <Download />
+                    {t('scheduler.export.button')}
+                    <ChevronDown />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setExportFormat('xlsx')}>{t('scheduler.export.excel')}</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setExportFormat('pdf')}>{t('scheduler.export.pdf')}</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setExportFormat('print')}>
+                    <Printer />
+                    {t('scheduler.export.print')}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               {!isPublished && (
                 <>
                   <Button variant="outline" onClick={() => void handleCopyPrevious()} disabled={copyPreviousMonth.isPending}>
@@ -560,6 +586,16 @@ export function SchedulerPage() {
         confirmLabel={t('scheduler.enableEditing')}
         onConfirm={confirmEnableEditing}
       />
+
+      {exportFormat && (
+        <ScheduleExportDialog
+          open={Boolean(exportFormat)}
+          onOpenChange={(next) => setExportFormat(next ? exportFormat : null)}
+          format={exportFormat}
+          year={year}
+          month={month}
+        />
+      )}
     </div>
   )
 }

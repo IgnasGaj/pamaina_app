@@ -70,6 +70,24 @@ apiClient.interceptors.response.use(
       }
     }
 
+    // Blob-response requests (file exports) get their error body back as a
+    // Blob too — axios doesn't know to parse it as JSON just because the
+    // request failed — so it has to be read out manually before it looks
+    // like a normal JSON error body.
+    if (error.response?.data instanceof Blob && error.response.data.type.includes('json')) {
+      try {
+        const text = await error.response.data.text()
+        const body = JSON.parse(text) as ApiErrorBody
+        if (body && 'error' in body) {
+          return Promise.reject(
+            new ApiError(body.error.code, body.error.message, error.response.status, body.error.details),
+          )
+        }
+      } catch {
+        // Fall through to the generic network-error branch below.
+      }
+    }
+
     if (error.response?.data && 'error' in error.response.data) {
       const body = error.response.data
       return Promise.reject(

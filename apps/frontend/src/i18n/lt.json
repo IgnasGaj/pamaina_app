@@ -334,7 +334,26 @@
     "weekdayThu": "Kt",
     "weekdayFri": "Pn",
     "weekdaySat": "Št",
-    "weekdaySun": "Sk"
+    "weekdaySun": "Sk",
+    "export": {
+      "button": "Eksportuoti",
+      "excel": "Excel (.xlsx)",
+      "pdf": "PDF",
+      "print": "Spausdinti",
+      "dialogTitleExcel": "Eksportuoti į Excel",
+      "dialogTitlePdf": "Eksportuoti į PDF",
+      "dialogTitlePrint": "Spausdinti grafiką",
+      "dialogDescription": "Parinkite eksportuojamus duomenis. Grafikas bus užpildytas oficialios lietuviškos formos šablone.",
+      "month": "Mėnuo",
+      "year": "Metai",
+      "department": "Padalinys",
+      "allDepartments": "Visi padaliniai",
+      "employee": "Darbuotojas",
+      "allEmployees": "Visi darbuotojai",
+      "signatureName": "Sudarė (vardas, pavardė)",
+      "includeUnpublished": "Įtraukti nepaskelbtą grafiką",
+      "confirm": "Eksportuoti"
+    }
   },
   "workingTime": {
     "title": "Darbo laiko nustatymai",

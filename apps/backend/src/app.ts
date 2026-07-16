@@ -19,6 +19,7 @@ import positionRoutes from "@/modules/positions/position.routes";
 import employeeRoutes from "@/modules/employees/employee.routes";
 import scheduleRoutes from "@/modules/schedules/schedule.routes";
 import scheduleAssignmentRoutes from "@/modules/schedules/schedule-assignment.routes";
+import scheduleExportRoutes from "@/modules/schedule-export/schedule-export.routes";
 import shiftTemplateRoutes from "@/modules/shift-templates/shift-template.routes";
 import absenceTypeRoutes from "@/modules/absence-types/absence-type.routes";
 import workingTimeRoutes from "@/modules/working-time/working-time.routes";
@@ -36,6 +37,10 @@ export function createApp(): Express {
     cors({
       origin: env.CORS_ORIGIN,
       credentials: true,
+      // Needed so the frontend can read the export filename off a
+      // cross-origin blob response — browsers hide response headers from JS
+      // by default unless the server explicitly exposes them.
+      exposedHeaders: ["Content-Disposition"],
     }),
   );
   app.use(compression());
@@ -59,6 +64,7 @@ export function createApp(): Express {
   api.use("/employees", employeeRoutes);
   api.use("/schedules", scheduleRoutes);
   api.use("/schedule-assignments", scheduleAssignmentRoutes);
+  api.use("/schedule-exports", scheduleExportRoutes);
   api.use("/shift-templates", shiftTemplateRoutes);
   api.use("/absence-types", absenceTypeRoutes);
   api.use("/working-time", workingTimeRoutes);

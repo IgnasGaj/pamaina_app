@@ -334,7 +334,26 @@
     "weekdayThu": "Th",
     "weekdayFri": "Fr",
     "weekdaySat": "Sa",
-    "weekdaySun": "Su"
+    "weekdaySun": "Su",
+    "export": {
+      "button": "Export",
+      "excel": "Excel (.xlsx)",
+      "pdf": "PDF",
+      "print": "Print",
+      "dialogTitleExcel": "Export to Excel",
+      "dialogTitlePdf": "Export to PDF",
+      "dialogTitlePrint": "Print schedule",
+      "dialogDescription": "Choose what to export. The schedule will be filled into the official Lithuanian form template.",
+      "month": "Month",
+      "year": "Year",
+      "department": "Department",
+      "allDepartments": "All departments",
+      "employee": "Employee",
+      "allEmployees": "All employees",
+      "signatureName": "Prepared by (name)",
+      "includeUnpublished": "Include unpublished schedule",
+      "confirm": "Export"
+    }
   },
   "workingTime": {
     "title": "Working time settings",

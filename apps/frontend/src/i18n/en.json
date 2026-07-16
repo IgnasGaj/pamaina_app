@@ -83,6 +83,7 @@
     "teamMembers": "Team members",
     "companySettings": "Company settings",
     "localizationSettings": "Localization",
+    "settings": "Settings",
     "appName": "Pamaina"
   },
   "topbar": {
@@ -489,6 +490,8 @@
     }
   },
   "settings": {
+    "hubTitle": "Settings",
+    "hubDescription": "Every configuration module for your company, in one place.",
     "companyTitle": "Company settings",
     "companyDescription": "Manage your company's profile information.",
     "companyName": "Company name",

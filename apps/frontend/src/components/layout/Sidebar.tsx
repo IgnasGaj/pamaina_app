@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 
-import { NAV_ITEMS } from '@/components/layout/nav-items'
+import { isNavEntryVisible, NAV_ITEMS } from '@/components/layout/nav-items'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth.store'
 
@@ -10,12 +10,7 @@ export function Sidebar() {
   const user = useAuthStore((state) => state.user)
   const hasAnyPermission = useAuthStore((state) => state.hasAnyPermission)
 
-  const visibleItems = NAV_ITEMS.filter((item) => {
-    if (item.roleKey && user?.roleKey !== item.roleKey) return false
-    if (item.permission && !hasAnyPermission(Array.isArray(item.permission) ? item.permission : [item.permission]))
-      return false
-    return true
-  })
+  const visibleItems = NAV_ITEMS.filter((item) => isNavEntryVisible(item, user, hasAnyPermission))
 
   return (
     <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-card md:flex">

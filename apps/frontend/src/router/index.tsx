@@ -2,6 +2,7 @@ import { createBrowserRouter } from 'react-router-dom'
 
 import { AppShell } from '@/components/layout/AppShell'
 import { EmployeeShell } from '@/components/layout/EmployeeShell'
+import { LegacyRouteRedirect } from '@/components/layout/LegacyRouteRedirect'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { RequireOnboarding } from '@/components/auth/RequireOnboarding'
 import { RequirePasswordChange } from '@/components/auth/RequirePasswordChange'
@@ -19,6 +20,8 @@ import { SchedulerPage } from '@/pages/scheduler/SchedulerPage'
 import { ShiftTemplatesPage } from '@/pages/shift-templates/ShiftTemplatesPage'
 import { AbsenceTypesPage } from '@/pages/absence-types/AbsenceTypesPage'
 import { UsersPage } from '@/pages/users/UsersPage'
+import { SettingsLayout } from '@/pages/settings/SettingsLayout'
+import { SettingsPage } from '@/pages/settings/SettingsPage'
 import { CompanySettingsPage } from '@/pages/settings/CompanySettingsPage'
 import { LocalizationSettingsPage } from '@/pages/settings/LocalizationSettingsPage'
 import { WorkingTimeSettingsPage } from '@/pages/settings/WorkingTimeSettingsPage'
@@ -72,33 +75,51 @@ export const router = createBrowserRouter([
                         children: [{ path: 'scheduler', element: <SchedulerPage /> }],
                       },
                       {
-                        element: <RequirePermission anyOf={[PERMISSIONS.SHIFT_TEMPLATE_READ]} />,
-                        children: [{ path: 'shift-templates', element: <ShiftTemplatesPage /> }],
-                      },
-                      {
-                        element: <RequirePermission anyOf={[PERMISSIONS.ABSENCE_TYPE_READ]} />,
-                        children: [{ path: 'absence-types', element: <AbsenceTypesPage /> }],
-                      },
-                      {
-                        element: (
-                          <RequirePermission anyOf={[PERMISSIONS.DEPARTMENT_READ, PERMISSIONS.POSITION_READ]} />
-                        ),
-                        children: [{ path: 'organization', element: <OrganizationPage /> }],
-                      },
-                      {
-                        element: <RequirePermission anyOf={[PERMISSIONS.USER_READ]} />,
-                        children: [{ path: 'users', element: <UsersPage /> }],
-                      },
-                      {
-                        element: <RequirePermission anyOf={[PERMISSIONS.WORKING_TIME_READ]} />,
-                        children: [{ path: 'settings/working-time', element: <WorkingTimeSettingsPage /> }],
-                      },
-                      {
                         element: <RequirePermission anyOf={[PERMISSIONS.REQUEST_MANAGE]} />,
                         children: [{ path: 'requests', element: <EmployeeRequestsPage /> }],
                       },
-                      { path: 'settings/company', element: <CompanySettingsPage /> },
-                      { path: 'settings/localization', element: <LocalizationSettingsPage /> },
+                      // Every configuration module now lives under one Nustatymai
+                      // (Settings) hub instead of its own sidebar entry — see
+                      // components/layout/settings-sections.ts for the grouping.
+                      // Each section keeps the exact permission gate it already
+                      // had; only where it's mounted in the tree changed.
+                      {
+                        path: 'settings',
+                        element: <SettingsLayout />,
+                        children: [
+                          { index: true, element: <SettingsPage /> },
+                          {
+                            element: (
+                              <RequirePermission anyOf={[PERMISSIONS.DEPARTMENT_READ, PERMISSIONS.POSITION_READ]} />
+                            ),
+                            children: [{ path: 'organization', element: <OrganizationPage /> }],
+                          },
+                          {
+                            element: <RequirePermission anyOf={[PERMISSIONS.USER_READ]} />,
+                            children: [{ path: 'users', element: <UsersPage /> }],
+                          },
+                          {
+                            element: <RequirePermission anyOf={[PERMISSIONS.SHIFT_TEMPLATE_READ]} />,
+                            children: [{ path: 'shift-templates', element: <ShiftTemplatesPage /> }],
+                          },
+                          {
+                            element: <RequirePermission anyOf={[PERMISSIONS.ABSENCE_TYPE_READ]} />,
+                            children: [{ path: 'absence-types', element: <AbsenceTypesPage /> }],
+                          },
+                          {
+                            element: <RequirePermission anyOf={[PERMISSIONS.WORKING_TIME_READ]} />,
+                            children: [{ path: 'working-time', element: <WorkingTimeSettingsPage /> }],
+                          },
+                          { path: 'company', element: <CompanySettingsPage /> },
+                          { path: 'localization', element: <LocalizationSettingsPage /> },
+                        ],
+                      },
+                      // Old standalone URLs redirect to their new home under
+                      // /settings/* so existing bookmarks/links keep working.
+                      { path: 'organization', element: <LegacyRouteRedirect to="/settings/organization" /> },
+                      { path: 'users', element: <LegacyRouteRedirect to="/settings/users" /> },
+                      { path: 'shift-templates', element: <LegacyRouteRedirect to="/settings/shift-templates" /> },
+                      { path: 'absence-types', element: <LegacyRouteRedirect to="/settings/absence-types" /> },
                     ],
                   },
                 ],

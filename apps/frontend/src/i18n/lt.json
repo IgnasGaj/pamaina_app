@@ -83,6 +83,7 @@
     "teamMembers": "Komandos nariai",
     "companySettings": "Įmonės nustatymai",
     "localizationSettings": "Lokalizacija",
+    "settings": "Nustatymai",
     "appName": "Pamaina"
   },
   "topbar": {
@@ -489,6 +490,8 @@
     }
   },
   "settings": {
+    "hubTitle": "Nustatymai",
+    "hubDescription": "Visi jūsų įmonės konfigūracijos moduliai vienoje vietoje.",
     "companyTitle": "Įmonės nustatymai",
     "companyDescription": "Tvarkykite savo įmonės profilio informaciją.",
     "companyName": "Įmonės pavadinimas",

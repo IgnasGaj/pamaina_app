@@ -100,7 +100,11 @@ export function DashboardPage() {
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             {canCreateEmployees && <QuickAction to="/employees" label={t('dashboard.addEmployee')} icon={UserPlus} />}
             {canCreateDepartments && (
-              <QuickAction to="/organization?tab=departments" label={t('dashboard.createDepartment')} icon={Building2} />
+              <QuickAction
+                to="/settings/organization?tab=departments"
+                label={t('dashboard.createDepartment')}
+                icon={Building2}
+              />
             )}
             {user?.roleKey === 'COMPANY_OWNER' && (
               <QuickAction to="/settings/company" label={t('dashboard.settings')} icon={Settings} />

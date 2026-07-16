@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { CalendarDays, ChevronLeft, ChevronRight, Copy, Loader2, Pencil, Plus, RefreshCw } from 'lucide-react'
+import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Copy, Loader2, Pencil, Plus, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
 
@@ -447,16 +447,44 @@ export function SchedulerPage() {
             </SelectContent>
           </Select>
 
-          <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortBy)}>
-            <SelectTrigger className="w-44">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="name">{t('scheduler.sortEmployeeName')}</SelectItem>
-              <SelectItem value="department">{t('scheduler.sortDepartment')}</SelectItem>
-              <SelectItem value="position">{t('scheduler.sortPosition')}</SelectItem>
-            </SelectContent>
-          </Select>
+          {/*
+            The trigger must always be wide enough for the longest translated
+            sort label (today "Rikiuoti: darbuotojo vardas"), without a
+            hardcoded width that would break on future/longer translations,
+            and without resizing as the user switches options (which would
+            shift the rest of the toolbar). A CSS-only technique: an
+            invisible, zero-height sizer stacked in the same grid cell as the
+            trigger renders all option labels at once, using the exact same
+            padding/gap/icon-size box model as SelectTrigger; the grid
+            column's intrinsic width is driven by the widest of those, and
+            the trigger (`w-full`) fills that column.
+          */}
+          <div className="relative inline-grid max-w-full">
+            <div aria-hidden className="invisible col-start-1 row-start-1 flex h-0 flex-col overflow-hidden">
+              <span className="flex items-center gap-2 whitespace-nowrap px-3 py-2 text-sm">
+                {t('scheduler.sortEmployeeName')}
+                <ChevronDown className="size-4 shrink-0" />
+              </span>
+              <span className="flex items-center gap-2 whitespace-nowrap px-3 py-2 text-sm">
+                {t('scheduler.sortDepartment')}
+                <ChevronDown className="size-4 shrink-0" />
+              </span>
+              <span className="flex items-center gap-2 whitespace-nowrap px-3 py-2 text-sm">
+                {t('scheduler.sortPosition')}
+                <ChevronDown className="size-4 shrink-0" />
+              </span>
+            </div>
+            <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortBy)}>
+              <SelectTrigger className="col-start-1 row-start-1 w-full min-w-0 max-w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="name">{t('scheduler.sortEmployeeName')}</SelectItem>
+                <SelectItem value="department">{t('scheduler.sortDepartment')}</SelectItem>
+                <SelectItem value="position">{t('scheduler.sortPosition')}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
           <div className="flex items-center gap-2">
             <Switch checked={activeOnly} onCheckedChange={setActiveOnly} id="activeOnly" />

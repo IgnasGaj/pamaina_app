@@ -4,7 +4,9 @@ import { Loader2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useCompanySettings } from '@/hooks/useCompany'
 import { useOwnEmployeeProfile } from '@/hooks/useEmployees'
+import { useRequests } from '@/hooks/useRequests'
 import { useSchedule, useSchedules } from '@/hooks/useSchedules'
 import { useMonthlyHours, useHolidays } from '@/hooks/useWorkingTime'
 import { useNotifications } from '@/hooks/useNotifications'
@@ -18,6 +20,8 @@ import {
   type MonthlyHoursStatus,
 } from '@/lib/monthly-hours'
 import { getErrorMessage } from '@/lib/errors'
+import { formatLongDate, type AppLocale } from '@/lib/date'
+import { useAuthStore } from '@/stores/auth.store'
 import type { AbsenceType } from '@/types/absence-type.types'
 import type { ScheduleAssignment } from '@/types/schedule.types'
 import type { Holiday } from '@/types/working-time.types'
@@ -52,10 +56,13 @@ function addMonths(year: number, month: number, delta: number): { year: number; 
 }
 
 export function EmployeeDashboardPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const locale: AppLocale = i18n.language === 'en' ? 'en' : 'lt'
+  const authUser = useAuthStore((state) => state.user)
   const today = new Date()
   const todayKey = today.toISOString().slice(0, 10)
   const tomorrowKey = new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+  const currentYear = today.getFullYear()
   const year = today.getFullYear()
   const month = today.getMonth() + 1
   const next = addMonths(year, month, 1)
@@ -77,6 +84,11 @@ export function EmployeeDashboardPage() {
   const shiftTemplatesQuery = useShiftTemplates({ pageSize: 100 })
   const absenceTypesQuery = useAbsenceTypes({ pageSize: 100 })
   const notificationsQuery = useNotifications({ pageSize: 3 })
+  const companySettingsQuery = useCompanySettings(authUser?.companyId ?? undefined)
+  const ownApprovedRequestsQuery = useRequests(
+    { employeeId: profileQuery.data?.id, status: 'APPROVED', pageSize: 100 },
+    { enabled: Boolean(profileQuery.data?.id) },
+  )
 
   const shiftTemplatesById = useMemo(() => {
     const map = new Map<string, ShiftTemplate>()
@@ -117,6 +129,36 @@ export function EmployeeDashboardPage() {
   const hoursStatus = getMonthlyHoursStatus(assignedHours, requiredHours)
   const remaining = requiredHours - assignedHours
   const progressPercent = requiredHours > 0 ? Math.min(100, Math.max(0, (assignedHours / requiredHours) * 100)) : 0
+
+  const nextApprovedLeave = useMemo(() => {
+    return (ownApprovedRequestsQuery.data?.items ?? [])
+      .filter((request) => request.endDate.slice(0, 10) >= todayKey)
+      .sort((a, b) => a.startDate.localeCompare(b.startDate))[0]
+  }, [ownApprovedRequestsQuery.data, todayKey])
+
+  const recentApprovals = useMemo(() => {
+    return [...(ownApprovedRequestsQuery.data?.items ?? [])]
+      .sort((a, b) => (b.reviewedAt ?? b.updatedAt).localeCompare(a.reviewedAt ?? a.updatedAt))
+      .slice(0, 3)
+  }, [ownApprovedRequestsQuery.data])
+
+  /** Days of 'A' (Atostogos) leave already approved this calendar year, clipped to the year boundary. */
+  const vacationDaysTakenThisYear = useMemo(() => {
+    const yearStart = `${currentYear}-01-01`
+    const yearEnd = `${currentYear}-12-31`
+    return (ownApprovedRequestsQuery.data?.items ?? [])
+      .filter((request) => request.absenceTypeCode === 'A')
+      .reduce((total, request) => {
+        const start = request.startDate.slice(0, 10) < yearStart ? yearStart : request.startDate.slice(0, 10)
+        const end = request.endDate.slice(0, 10) > yearEnd ? yearEnd : request.endDate.slice(0, 10)
+        if (end < start) return total
+        const days = Math.round((new Date(end).getTime() - new Date(start).getTime()) / 86_400_000) + 1
+        return total + days
+      }, 0)
+  }, [ownApprovedRequestsQuery.data, currentYear])
+
+  const annualVacationDays = companySettingsQuery.data?.annualVacationDays ?? 0
+  const remainingVacationDays = Math.max(0, annualVacationDays - vacationDaysTakenThisYear)
 
   const isLoading = profileQuery.isLoading || currentMonthQuery.isLoading
 
@@ -255,6 +297,72 @@ export function EmployeeDashboardPage() {
               style={{ width: `${progressPercent}%` }}
             />
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="rounded-2xl">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">{t('portal.nextApprovedLeave')}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {nextApprovedLeave ? (
+            <div className="flex items-center gap-2">
+              <span
+                className="size-2.5 shrink-0 rounded-full"
+                style={{ backgroundColor: nextApprovedLeave.absenceTypeColor }}
+                aria-hidden
+              />
+              <div>
+                <p className="text-sm font-semibold">{nextApprovedLeave.absenceTypeName}</p>
+                <p className="text-xs text-muted-foreground">
+                  {formatLongDate(nextApprovedLeave.startDate.slice(0, 10), locale)} –{' '}
+                  {formatLongDate(nextApprovedLeave.endDate.slice(0, 10), locale)}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">{t('portal.noUpcomingLeave')}</p>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="rounded-2xl">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">{t('portal.vacationBalance')}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-2xl font-bold tabular-nums">{remainingVacationDays}</p>
+          <p className="text-xs text-muted-foreground">
+            {t('portal.vacationBalanceDescription', { taken: vacationDaysTakenThisYear, total: annualVacationDays })}
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card className="rounded-2xl">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">{t('portal.recentApprovals')}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {recentApprovals.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t('portal.noRecentApprovals')}</p>
+          ) : (
+            recentApprovals.map((request) => (
+              <div key={request.id} className="flex items-center gap-2">
+                <span
+                  className="size-2.5 shrink-0 rounded-full"
+                  style={{ backgroundColor: request.absenceTypeColor }}
+                  aria-hidden
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{request.absenceTypeName}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {formatLongDate(request.startDate.slice(0, 10), locale)} –{' '}
+                    {formatLongDate(request.endDate.slice(0, 10), locale)}
+                  </p>
+                </div>
+              </div>
+            ))
+          )}
         </CardContent>
       </Card>
 

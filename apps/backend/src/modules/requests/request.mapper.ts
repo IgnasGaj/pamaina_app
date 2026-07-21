@@ -12,6 +12,7 @@ export function toRequestResponseDto(request: RequestWithRelations): RequestResp
     employeeId: request.employeeId,
     employeeName: `${request.employee.firstName} ${request.employee.lastName}`,
     absenceTypeId: request.absenceTypeId,
+    absenceTypeCode: request.absenceType.code,
     absenceTypeName: request.absenceType.name,
     absenceTypeColor: request.absenceType.color,
     startDate: toDateOnly(request.startDate),

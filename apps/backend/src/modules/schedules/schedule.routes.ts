@@ -6,6 +6,7 @@ import { asyncHandler } from "@/shared/middlewares/async-handler";
 import { validate } from "@/shared/middlewares/validate.middleware";
 import {
   createScheduleSchema,
+  listAbsencesQuerySchema,
   listSchedulesQuerySchema,
   scheduleIdParamsSchema,
   updateScheduleSchema,
@@ -28,6 +29,14 @@ router.post(
   authorize(PERMISSIONS.SCHEDULE_CREATE),
   validate({ body: createScheduleSchema }),
   asyncHandler(async (req, res) => scheduleController.create(req, res)),
+);
+
+// Registered before "/:id" so "absences" is never captured as a schedule id.
+router.get(
+  "/absences",
+  authorize(PERMISSIONS.SCHEDULE_READ),
+  validate({ query: listAbsencesQuerySchema }),
+  asyncHandler(async (req, res) => scheduleController.listAbsences(req, res)),
 );
 
 router.get(

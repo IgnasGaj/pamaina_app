@@ -1,6 +1,11 @@
 import { ScheduleAssignment } from "@prisma/client";
 import { ScheduleListItem, ScheduleWithAssignments } from "@/modules/schedules/schedule.repository";
-import { ScheduleAssignmentResponseDto, ScheduleResponseDto, ScheduleSummaryDto } from "@/modules/schedules/schedule.dto";
+import {
+  AbsenceEntryResponseDto,
+  ScheduleAssignmentResponseDto,
+  ScheduleResponseDto,
+  ScheduleSummaryDto,
+} from "@/modules/schedules/schedule.dto";
 
 function toDateOnly(date: Date): string {
   return date.toISOString().slice(0, 10);
@@ -42,6 +47,22 @@ export function toScheduleResponseDto(schedule: ScheduleWithAssignments): Schedu
     createdAt: schedule.createdAt.toISOString(),
     updatedAt: schedule.updatedAt.toISOString(),
     assignments: schedule.assignments.map(toAssignmentResponseDto),
+  };
+}
+
+type AbsenceEntryLike = ScheduleAssignment & {
+  employee: { firstName: string; lastName: string };
+  absenceType: { code: string; name: string; color: string } | null;
+};
+
+export function toAbsenceEntryResponseDto(assignment: AbsenceEntryLike): AbsenceEntryResponseDto {
+  return {
+    employeeId: assignment.employeeId,
+    employeeName: `${assignment.employee.firstName} ${assignment.employee.lastName}`,
+    date: toDateOnly(assignment.date),
+    absenceTypeCode: assignment.absenceType?.code ?? "",
+    absenceTypeName: assignment.absenceType?.name ?? "",
+    absenceTypeColor: assignment.absenceType?.color ?? "#F59E0B",
   };
 }
 

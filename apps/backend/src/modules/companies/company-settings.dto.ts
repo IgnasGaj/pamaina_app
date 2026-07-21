@@ -25,6 +25,7 @@ export const updateCompanySettingsSchema = z.object({
   businessType: businessTypeSchema.optional(),
   workWeekType: workWeekTypeSchema.optional(),
   vacationPolicy: vacationPolicyTypeSchema.optional(),
+  annualVacationDays: z.coerce.number().int().min(0).max(365).optional(),
 });
 export type UpdateCompanySettingsDto = z.infer<typeof updateCompanySettingsSchema>;
 
@@ -36,6 +37,7 @@ export const companySettingsResponseSchema = z.object({
   businessType: businessTypeSchema.nullable(),
   workWeekType: workWeekTypeSchema.nullable(),
   vacationPolicy: vacationPolicyTypeSchema.nullable(),
+  annualVacationDays: z.number().int(),
   onboardingCompletedAt: z.string().nullable(),
 });
 export type CompanySettingsResponseDto = z.infer<typeof companySettingsResponseSchema>;

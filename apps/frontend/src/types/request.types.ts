@@ -1,4 +1,4 @@
-export type RequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED'
+export type RequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED' | 'REVOKED'
 
 export interface EmployeeRequest {
   id: string
@@ -6,6 +6,7 @@ export interface EmployeeRequest {
   employeeId: string
   employeeName: string
   absenceTypeId: string
+  absenceTypeCode: string
   absenceTypeName: string
   absenceTypeColor: string
   startDate: string
@@ -31,6 +32,13 @@ export interface CreateRequestPayload {
 
 export interface ReviewRequestPayload {
   reviewComment?: string
+  /** Only meaningful for approve — how to handle days where a shift is already scheduled. Defaults server-side to 'remove'. */
+  conflictResolution?: 'remove' | 'keep'
+}
+
+export interface ConflictPreviewEntry {
+  date: string
+  shiftTemplateName: string
 }
 
 export interface ListRequestsQuery {
@@ -38,4 +46,7 @@ export interface ListRequestsQuery {
   pageSize?: number
   status?: RequestStatus
   employeeId?: string
+  /** Filters by the request's startDate, inclusive — used for "upcoming" dashboard widgets. */
+  startDateFrom?: string
+  startDateTo?: string
 }

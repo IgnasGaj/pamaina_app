@@ -8,7 +8,7 @@ type Client = PrismaClient | Prisma.TransactionClient;
 const requestWithRelations = Prisma.validator<Prisma.EmployeeRequestDefaultArgs>()({
   include: {
     employee: { select: { firstName: true, lastName: true, userId: true } },
-    absenceType: { select: { name: true, color: true } },
+    absenceType: { select: { code: true, name: true, color: true } },
     reviewer: { select: { firstName: true, lastName: true } },
   },
 });
@@ -18,6 +18,8 @@ export interface ListRequestsFilter {
   companyId: string;
   status?: RequestStatus;
   employeeId?: string;
+  startDateFrom?: Date;
+  startDateTo?: Date;
 }
 
 export class RequestRepository {
@@ -43,6 +45,14 @@ export class RequestRepository {
       companyId: filter.companyId,
       ...(filter.status ? { status: filter.status } : {}),
       ...(filter.employeeId ? { employeeId: filter.employeeId } : {}),
+      ...(filter.startDateFrom || filter.startDateTo
+        ? {
+            startDate: {
+              ...(filter.startDateFrom ? { gte: filter.startDateFrom } : {}),
+              ...(filter.startDateTo ? { lte: filter.startDateTo } : {}),
+            },
+          }
+        : {}),
     };
 
     const [items, total] = await Promise.all([
@@ -51,7 +61,7 @@ export class RequestRepository {
         include: requestWithRelations.include,
         skip,
         take,
-        orderBy: [{ createdAt: "desc" }],
+        orderBy: filter.startDateFrom || filter.startDateTo ? [{ startDate: "asc" }] : [{ createdAt: "desc" }],
       }),
       client.employeeRequest.count({ where }),
     ]);

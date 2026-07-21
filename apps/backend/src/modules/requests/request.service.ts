@@ -1,11 +1,18 @@
+import { prisma } from "@/config/prisma";
 import { requestRepository } from "@/modules/requests/request.repository";
 import { toRequestResponseDto } from "@/modules/requests/request.mapper";
 import {
+  ConflictPreviewEntryDto,
   CreateRequestDto,
   ListRequestsQuery,
   RequestResponseDto,
   ReviewRequestDto,
 } from "@/modules/requests/request.dto";
+import {
+  previewApprovalConflicts,
+  revokeApprovedRequestSync,
+  syncApprovedRequestToSchedule,
+} from "@/modules/requests/request-schedule-sync.service";
 import { employeeRepository } from "@/modules/employees/employee.repository";
 import { absenceTypeRepository } from "@/modules/absence-types/absence-type.repository";
 import { userRepository } from "@/modules/users/user.repository";
@@ -87,10 +94,24 @@ export async function listRequests(
   restrictToEmployeeId?: string,
 ): Promise<PaginatedResult<RequestResponseDto>> {
   const { items, total } = await requestRepository.findMany(
-    { companyId, status: query.status, employeeId: restrictToEmployeeId ?? query.employeeId },
+    {
+      companyId,
+      status: query.status,
+      employeeId: restrictToEmployeeId ?? query.employeeId,
+      startDateFrom: query.startDateFrom,
+      startDateTo: query.startDateTo,
+    },
     query,
   );
   return buildPaginatedResult(items.map(toRequestResponseDto), query, total);
+}
+
+export async function getRequestConflicts(companyId: string, id: string): Promise<ConflictPreviewEntryDto[]> {
+  const existing = await requestRepository.findByIdInCompany(id, companyId);
+  if (!existing) {
+    throw new NotFoundError("Request");
+  }
+  return previewApprovalConflicts(companyId, existing);
 }
 
 export async function approveRequest(
@@ -99,21 +120,33 @@ export async function approveRequest(
   id: string,
   dto: ReviewRequestDto,
 ): Promise<RequestResponseDto> {
-  const existing = await requestRepository.findByIdInCompany(id, companyId);
-  if (!existing) {
-    throw new NotFoundError("Request");
-  }
-  if (existing.status !== "PENDING") {
-    throw new ConflictError("Only pending requests can be approved");
-  }
+  const updated = await prisma.$transaction(async (tx) => {
+    const existing = await requestRepository.findByIdInCompany(id, companyId, tx);
+    if (!existing) {
+      throw new NotFoundError("Request");
+    }
+    if (existing.status !== "PENDING") {
+      throw new ConflictError("Only pending requests can be approved");
+    }
 
-  const updated = await requestRepository.update(id, {
-    status: "APPROVED",
-    reviewedAt: new Date(),
-    reviewComment: dto.reviewComment,
-    reviewer: { connect: { id: reviewerId } },
+    const request = await requestRepository.update(
+      id,
+      {
+        status: "APPROVED",
+        reviewedAt: new Date(),
+        reviewComment: dto.reviewComment,
+        reviewer: { connect: { id: reviewerId } },
+      },
+      tx,
+    );
+
+    await syncApprovedRequestToSchedule(tx, companyId, reviewerId, request, dto.conflictResolution);
+
+    return request;
   });
 
+  // Notifications never roll back the triggering action (see
+  // notification.service.ts) — fired only after the transaction commits.
   if (updated.employee.userId) {
     await notifyUser({
       companyId,
@@ -121,6 +154,50 @@ export async function approveRequest(
       type: "REQUEST_APPROVED",
       title: "Request approved",
       message: `Your ${updated.absenceType.name.toLowerCase()} request has been approved.`,
+      link: "/my-requests",
+    });
+  }
+
+  return toRequestResponseDto(updated);
+}
+
+/** Reverses an APPROVED request: undoes its Scheduler side effects (restoring any shift it overwrote, deleting any absence it created) and marks it REVOKED. */
+export async function revokeApproval(
+  companyId: string,
+  reviewerId: string,
+  id: string,
+  dto: ReviewRequestDto,
+): Promise<RequestResponseDto> {
+  const updated = await prisma.$transaction(async (tx) => {
+    const existing = await requestRepository.findByIdInCompany(id, companyId, tx);
+    if (!existing) {
+      throw new NotFoundError("Request");
+    }
+    if (existing.status !== "APPROVED") {
+      throw new ConflictError("Only approved requests can be revoked");
+    }
+
+    await revokeApprovedRequestSync(tx, companyId, reviewerId, id);
+
+    return requestRepository.update(
+      id,
+      {
+        status: "REVOKED",
+        reviewedAt: new Date(),
+        reviewComment: dto.reviewComment,
+        reviewer: { connect: { id: reviewerId } },
+      },
+      tx,
+    );
+  });
+
+  if (updated.employee.userId) {
+    await notifyUser({
+      companyId,
+      userId: updated.employee.userId,
+      type: "REQUEST_REJECTED",
+      title: "Approval revoked",
+      message: `Your approved ${updated.absenceType.name.toLowerCase()} request was revoked by a manager.`,
       link: "/my-requests",
     });
   }

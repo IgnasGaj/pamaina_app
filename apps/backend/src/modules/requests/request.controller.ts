@@ -59,6 +59,12 @@ export async function list(req: Request, res: Response): Promise<void> {
   sendSuccess(res, result.items, 200, { pagination: result.meta });
 }
 
+export async function getConflicts(req: Request, res: Response): Promise<void> {
+  const { id } = req.params as { id: string };
+  const conflicts = await requestService.getRequestConflicts(req.user!.companyId!, id);
+  sendSuccess(res, conflicts);
+}
+
 export async function approve(req: Request, res: Response): Promise<void> {
   const { id } = req.params as { id: string };
   const request = await requestService.approveRequest(
@@ -73,6 +79,17 @@ export async function approve(req: Request, res: Response): Promise<void> {
 export async function reject(req: Request, res: Response): Promise<void> {
   const { id } = req.params as { id: string };
   const request = await requestService.rejectRequest(
+    req.user!.companyId!,
+    req.user!.id,
+    id,
+    req.body as ReviewRequestDto,
+  );
+  sendSuccess(res, request);
+}
+
+export async function revoke(req: Request, res: Response): Promise<void> {
+  const { id } = req.params as { id: string };
+  const request = await requestService.revokeApproval(
     req.user!.companyId!,
     req.user!.id,
     id,

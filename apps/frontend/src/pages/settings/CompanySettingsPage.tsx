@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
@@ -7,10 +7,10 @@ import { z } from 'zod'
 
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useCompany, useUpdateCompany } from '@/hooks/useCompany'
+import { useCompany, useCompanySettings, useUpdateCompany, useUpdateCompanySettings } from '@/hooks/useCompany'
 import { getErrorMessage } from '@/lib/errors'
 import { useAuthStore } from '@/stores/auth.store'
 
@@ -43,6 +43,9 @@ export function CompanySettingsPage() {
   const user = useAuthStore((state) => state.user)
   const companyQuery = useCompany(user?.companyId ?? undefined)
   const updateCompany = useUpdateCompany(user?.companyId ?? '')
+  const settingsQuery = useCompanySettings(user?.companyId ?? undefined)
+  const updateSettings = useUpdateCompanySettings(user?.companyId ?? '')
+  const [annualVacationDays, setAnnualVacationDays] = useState('')
 
   const {
     register,
@@ -67,6 +70,26 @@ export function CompanySettingsPage() {
       })
     }
   }, [companyQuery.data, reset])
+
+  useEffect(() => {
+    if (settingsQuery.data) {
+      setAnnualVacationDays(String(settingsQuery.data.annualVacationDays))
+    }
+  }, [settingsQuery.data])
+
+  async function handleSaveVacationDays() {
+    const parsed = Number(annualVacationDays)
+    if (!Number.isInteger(parsed) || parsed < 0) {
+      toast.error(t('settings.annualVacationDaysInvalid'))
+      return
+    }
+    try {
+      await updateSettings.mutateAsync({ annualVacationDays: parsed })
+      toast.success(t('settings.companyUpdated'))
+    } catch (error) {
+      toast.error(getErrorMessage(error))
+    }
+  }
 
   async function onSubmit(values: CompanyFormValues) {
     try {
@@ -142,6 +165,36 @@ export function CompanySettingsPage() {
               </div>
             </form>
           )}
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6 max-w-2xl">
+        <CardHeader>
+          <CardTitle className="text-base">{t('settings.leavePolicyTitle')}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {settingsQuery.isLoading ? (
+            <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
+          ) : (
+            <div className="flex items-end gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="annualVacationDays">{t('settings.annualVacationDays')}</Label>
+                <Input
+                  id="annualVacationDays"
+                  type="number"
+                  min={0}
+                  max={365}
+                  className="w-32"
+                  value={annualVacationDays}
+                  onChange={(e) => setAnnualVacationDays(e.target.value)}
+                />
+              </div>
+              <Button onClick={() => void handleSaveVacationDays()} disabled={updateSettings.isPending}>
+                {updateSettings.isPending ? t('common.saving') : t('common.saveChanges')}
+              </Button>
+            </div>
+          )}
+          <p className="mt-2 text-xs text-muted-foreground">{t('settings.annualVacationDaysDescription')}</p>
         </CardContent>
       </Card>
     </div>

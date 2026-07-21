@@ -52,6 +52,7 @@ export interface CompanySettings {
   businessType: BusinessType | null
   workWeekType: WorkWeekType | null
   vacationPolicy: VacationPolicyType | null
+  annualVacationDays: number
   onboardingCompletedAt: string | null
 }
 
@@ -61,4 +62,5 @@ export interface UpdateCompanySettingsPayload {
   businessType?: BusinessType
   workWeekType?: WorkWeekType
   vacationPolicy?: VacationPolicyType
+  annualVacationDays?: number
 }

@@ -40,6 +40,27 @@ export class ScheduleAssignmentRepository {
     });
   }
 
+  /** Every row auto-created/overwritten by a given approved EmployeeRequest — the exact set a revocation needs to undo. */
+  async findBySourceRequestId(requestId: string, client: Client = prisma) {
+    return client.scheduleAssignment.findMany({ where: { sourceRequestId: requestId } });
+  }
+
+  /** Every absence-type assignment (approved leave already on the schedule) within a date range, scoped to the company via its Schedule. */
+  async findAbsencesInRange(companyId: string, from: Date, to: Date, client: Client = prisma) {
+    return client.scheduleAssignment.findMany({
+      where: {
+        date: { gte: from, lte: to },
+        absenceTypeId: { not: null },
+        schedule: { companyId },
+      },
+      include: {
+        employee: { select: { firstName: true, lastName: true } },
+        absenceType: { select: { code: true, name: true, color: true } },
+      },
+      orderBy: [{ date: "asc" }],
+    });
+  }
+
   async update(
     id: string,
     data: Prisma.ScheduleAssignmentUpdateInput,

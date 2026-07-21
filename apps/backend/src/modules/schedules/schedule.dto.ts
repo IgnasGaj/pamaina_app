@@ -27,6 +27,23 @@ export const listSchedulesQuerySchema = paginationQuerySchema.extend({
 });
 export type ListSchedulesQuery = z.infer<typeof listSchedulesQuerySchema>;
 
+/** Powers "employees absent today / next week" dashboard widgets without fetching whole months of schedule data. */
+export const listAbsencesQuerySchema = z.object({
+  from: z.coerce.date(),
+  to: z.coerce.date(),
+});
+export type ListAbsencesQuery = z.infer<typeof listAbsencesQuerySchema>;
+
+export const absenceEntryResponseSchema = z.object({
+  employeeId: z.string().uuid(),
+  employeeName: z.string(),
+  date: z.string(),
+  absenceTypeCode: z.string(),
+  absenceTypeName: z.string(),
+  absenceTypeColor: z.string(),
+});
+export type AbsenceEntryResponseDto = z.infer<typeof absenceEntryResponseSchema>;
+
 /** Exactly one of shiftTemplateId/absenceTypeId must be set — never both, never neither. */
 const exactlyOneAssignmentKindRefinement = (
   data: { shiftTemplateId?: string | null; absenceTypeId?: string | null },

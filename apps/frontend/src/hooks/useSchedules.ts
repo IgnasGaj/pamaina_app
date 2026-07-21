@@ -6,6 +6,7 @@ import {
   createSchedule,
   deleteAssignment,
   getSchedule,
+  listAbsences,
   listSchedules,
   publishSchedule,
   updateAssignment,
@@ -14,6 +15,7 @@ import {
 import type {
   CreateAssignmentPayload,
   CreateSchedulePayload,
+  ListAbsencesQuery,
   ListSchedulesQuery,
   Schedule,
   ScheduleAssignment,
@@ -27,6 +29,15 @@ export const scheduleKeys = {
   list: (query: ListSchedulesQuery) => [...scheduleKeys.lists(), query] as const,
   details: () => [...scheduleKeys.all, 'detail'] as const,
   detail: (id: string) => [...scheduleKeys.details(), id] as const,
+  absences: (query: ListAbsencesQuery) => [...scheduleKeys.all, 'absences', query] as const,
+}
+
+export function useAbsences(query: ListAbsencesQuery, options: { enabled?: boolean } = {}) {
+  return useQuery({
+    queryKey: scheduleKeys.absences(query),
+    queryFn: () => listAbsences(query),
+    enabled: options.enabled,
+  })
 }
 
 export function useSchedules(query: ListSchedulesQuery = {}) {

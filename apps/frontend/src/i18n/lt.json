@@ -154,7 +154,14 @@
     "departments": "Padaliniai",
     "positions": "Pareigybės",
     "recentlyAddedEmployees": "Neseniai pridėti darbuotojai",
-    "noEmployeesYet": "Darbuotojų dar nėra."
+    "noEmployeesYet": "Darbuotojų dar nėra.",
+    "pendingRequests": "Laukiantys prašymai",
+    "upcomingVacations": "Artėjančios atostogos",
+    "noUpcomingVacations": "Artėjančių atostogų nėra.",
+    "absences": "Nebuvimai",
+    "absentToday": "Šiandien neatvyks",
+    "absentNextWeek": "Kitą savaitę neatvyks",
+    "noOneAbsent": "Nėra."
   },
   "employees": {
     "title": "Darbuotojai",
@@ -387,6 +394,7 @@
     "approved": "Patvirtinta",
     "rejected": "Atmesta",
     "cancelled": "Atšaukta",
+    "revoked": "Patvirtinimas atšauktas",
     "loadingRequests": "Kraunami prašymai…",
     "noMatch": "Nėra prašymų, atitinkančių filtrus.",
     "employee": "Darbuotojas",
@@ -425,6 +433,17 @@
     "cancelRequestTitle": "Atšaukti prašymą",
     "cancelRequestDescription": "Ar tikrai norite atšaukti savo {{type}} prašymą?",
     "requestCancelled": "Prašymas atšauktas",
+    "revoke": "Atšaukti patvirtinimą",
+    "revoked_toast": "Patvirtinimas atšauktas",
+    "revokeConfirmTitle": "Atšaukti patvirtinimą",
+    "revokeConfirmDescription": "Grafike sukurti nebuvimo įrašai bus pašalinti, o pašalintos pamainos (jei buvo) atkurtos. Tęsti?",
+    "conflict": {
+      "title": "Aptiktas pamainų konfliktas",
+      "description": "Darbuotojui šiomis dienomis jau suplanuotos pamainos. Ką norite daryti?",
+      "removeShifts": "Pašalinti konfliktuojančias pamainas (rekomenduojama)",
+      "cancelApproval": "Atšaukti patvirtinimą",
+      "keepShifts": "Palikti pamainas"
+    },
     "validation": {
       "selectRequestType": "Pasirinkite prašymo tipą",
       "startDateRequired": "Pradžios data yra privaloma",
@@ -458,7 +477,13 @@
     "todayShiftTitle": "Šiandienos pamaina",
     "managerNote": "Vadovo pastaba",
     "latestNotifications": "Naujausi pranešimai",
-    "noAssignment": "Šią dieną pamaina neplanuota."
+    "noAssignment": "Šią dieną pamaina neplanuota.",
+    "nextApprovedLeave": "Artimiausios patvirtintos atostogos",
+    "noUpcomingLeave": "Artėjančio nebuvimo nėra.",
+    "vacationBalance": "Likutis atostogų dienų",
+    "vacationBalanceDescription": "Panaudota {{taken}} iš {{total}} metinių atostogų dienų.",
+    "recentApprovals": "Neseniai patvirtinti prašymai",
+    "noRecentApprovals": "Patvirtintų prašymų dar nėra."
   },
   "profile": {
     "title": "Mano profilis",
@@ -520,6 +545,10 @@
     "legalCode": "Įmonės kodas",
     "vatCode": "PVM kodas",
     "companyUpdated": "Įmonės informacija atnaujinta",
+    "leavePolicyTitle": "Atostogų politika",
+    "annualVacationDays": "Metinės atostogų dienos",
+    "annualVacationDaysDescription": "Numatytasis metinis atostogų dienų skaičius kiekvienam darbuotojui, naudojamas darbuotojo skydelio atostogų likučio skaičiavime.",
+    "annualVacationDaysInvalid": "Įveskite teisingą dienų skaičių (0 ar daugiau).",
     "localizationTitle": "Lokalizacija",
     "localizationDescription": "Kalba, laiko juosta ir datos formatas visai įmonei.",
     "language": "Kalba",

@@ -1,8 +1,10 @@
 import { apiClient, unwrap, unwrapPaginated } from '@/lib/api-client'
 import type { PaginatedResult } from '@/types/api.types'
 import type {
+  AbsenceEntry,
   CreateAssignmentPayload,
   CreateSchedulePayload,
+  ListAbsencesQuery,
   ListSchedulesQuery,
   Schedule,
   ScheduleAssignment,
@@ -10,6 +12,10 @@ import type {
   UpdateAssignmentPayload,
   UpdateSchedulePayload,
 } from '@/types/schedule.types'
+
+export function listAbsences(query: ListAbsencesQuery): Promise<AbsenceEntry[]> {
+  return unwrap(apiClient.get('/schedules/absences', { params: query }))
+}
 
 export function listSchedules(query: ListSchedulesQuery = {}): Promise<PaginatedResult<ScheduleSummary>> {
   return unwrapPaginated(apiClient.get('/schedules', { params: query }))

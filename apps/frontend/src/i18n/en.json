@@ -154,7 +154,14 @@
     "departments": "Departments",
     "positions": "Positions",
     "recentlyAddedEmployees": "Recently added employees",
-    "noEmployeesYet": "No employees yet."
+    "noEmployeesYet": "No employees yet.",
+    "pendingRequests": "Pending requests",
+    "upcomingVacations": "Upcoming vacations",
+    "noUpcomingVacations": "No upcoming vacations.",
+    "absences": "Absences",
+    "absentToday": "Absent today",
+    "absentNextWeek": "Absent next week",
+    "noOneAbsent": "None."
   },
   "employees": {
     "title": "Employees",
@@ -387,6 +394,7 @@
     "approved": "Approved",
     "rejected": "Rejected",
     "cancelled": "Cancelled",
+    "revoked": "Approval revoked",
     "loadingRequests": "Loading requests…",
     "noMatch": "No requests match your filters.",
     "employee": "Employee",
@@ -425,6 +433,17 @@
     "cancelRequestTitle": "Cancel request",
     "cancelRequestDescription": "Are you sure you want to withdraw your {{type}} request?",
     "requestCancelled": "Request cancelled",
+    "revoke": "Revoke approval",
+    "revoked_toast": "Approval revoked",
+    "revokeConfirmTitle": "Revoke approval",
+    "revokeConfirmDescription": "Absence entries created on the schedule will be removed, and any shifts they replaced (if any) will be restored. Continue?",
+    "conflict": {
+      "title": "Shift conflict detected",
+      "description": "The employee already has shifts scheduled on these days. What would you like to do?",
+      "removeShifts": "Remove conflicting shifts (recommended)",
+      "cancelApproval": "Cancel approval",
+      "keepShifts": "Keep shifts"
+    },
     "validation": {
       "selectRequestType": "Select a request type",
       "startDateRequired": "Start date is required",
@@ -458,7 +477,13 @@
     "todayShiftTitle": "Today's shift",
     "managerNote": "Manager note",
     "latestNotifications": "Latest notifications",
-    "noAssignment": "No shift scheduled for this day."
+    "noAssignment": "No shift scheduled for this day.",
+    "nextApprovedLeave": "Next approved leave",
+    "noUpcomingLeave": "No upcoming leave.",
+    "vacationBalance": "Remaining vacation days",
+    "vacationBalanceDescription": "Used {{taken}} of {{total}} annual vacation days.",
+    "recentApprovals": "Recent approvals",
+    "noRecentApprovals": "No approved requests yet."
   },
   "profile": {
     "title": "My profile",
@@ -520,6 +545,10 @@
     "legalCode": "Legal code",
     "vatCode": "VAT code",
     "companyUpdated": "Company details updated",
+    "leavePolicyTitle": "Leave policy",
+    "annualVacationDays": "Annual vacation days",
+    "annualVacationDaysDescription": "The default number of annual vacation days per employee, used to compute the vacation balance shown on the employee dashboard.",
+    "annualVacationDaysInvalid": "Enter a valid number of days (0 or more).",
     "localizationTitle": "Localization",
     "localizationDescription": "Language, timezone, and date format for the whole company.",
     "language": "Language",

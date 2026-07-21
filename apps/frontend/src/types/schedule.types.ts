@@ -78,3 +78,17 @@ export interface UpdateAssignmentPayload {
   absenceTypeId: string | null
   notes?: string | null
 }
+
+export interface ListAbsencesQuery {
+  from: string
+  to: string
+}
+
+export interface AbsenceEntry {
+  employeeId: string
+  employeeName: string
+  date: string
+  absenceTypeCode: string
+  absenceTypeName: string
+  absenceTypeColor: string
+}

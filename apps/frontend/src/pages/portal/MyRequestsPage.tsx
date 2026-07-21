@@ -20,6 +20,7 @@ const STATUS_BADGE_VARIANT: Record<RequestStatus, 'secondary' | 'success' | 'des
   APPROVED: 'success',
   REJECTED: 'destructive',
   CANCELLED: 'outline',
+  REVOKED: 'outline',
 }
 
 const STATUS_LABEL_KEYS: Record<RequestStatus, string> = {
@@ -27,6 +28,7 @@ const STATUS_LABEL_KEYS: Record<RequestStatus, string> = {
   APPROVED: 'requests.approved',
   REJECTED: 'requests.rejected',
   CANCELLED: 'requests.cancelled',
+  REVOKED: 'requests.revoked',
 }
 
 export function MyRequestsPage() {

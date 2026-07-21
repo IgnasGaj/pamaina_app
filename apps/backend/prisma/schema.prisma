@@ -51,6 +51,7 @@ model Company {
   companyNonWorkingDays CompanyNonWorkingDay[]
   employeeRequests      EmployeeRequest[]
   notifications         Notification[]
+  requestAuditLogs      RequestAuditLog[]
   settings              CompanySettings?
 
   @@index([isActive])
@@ -94,8 +95,13 @@ model CompanySettings {
   id        String @id @default(uuid())
   companyId String @unique @map("company_id")
 
-  logoUrl           String? @map("logo_url")
-  preferredLanguage String  @default("lt") @map("preferred_language")
+  logoUrl            String? @map("logo_url")
+  preferredLanguage  String  @default("lt") @map("preferred_language")
+  /// Company-wide default annual vacation entitlement per employee, in days.
+  /// Deliberately a single flat number for now (no per-employee overrides,
+  /// no accrual schedule) — see VacationPolicyType's own comment for why a
+  /// full accrual engine is out of scope until a real HR policy is defined.
+  annualVacationDays Int     @default(20) @map("annual_vacation_days")
 
   businessType   BusinessType?       @map("business_type")
   workWeekType   WorkWeekType?       @map("work_week_type")
@@ -176,24 +182,24 @@ model RolePermission {
 }
 
 model User {
-  id           String    @id @default(uuid())
+  id                 String    @id @default(uuid())
   /// Null only for platform-level Super Admin accounts.
-  companyId    String?   @map("company_id")
-  roleId       String    @map("role_id")
-  email        String    @unique
-  passwordHash String    @map("password_hash")
-  firstName    String    @map("first_name")
-  lastName     String    @map("last_name")
-  phone        String?
-  isActive     Boolean   @default(true) @map("is_active")
+  companyId          String?   @map("company_id")
+  roleId             String    @map("role_id")
+  email              String    @unique
+  passwordHash       String    @map("password_hash")
+  firstName          String    @map("first_name")
+  lastName           String    @map("last_name")
+  phone              String?
+  isActive           Boolean   @default(true) @map("is_active")
   /// True right after an account is created with a system-generated
   /// temporary password (see Employee auto-provisioning) until the user
   /// completes the forced change-password step on first login.
   mustChangePassword Boolean   @default(false) @map("must_change_password")
-  lastLoginAt  DateTime? @map("last_login_at")
-  deletedAt    DateTime? @map("deleted_at")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
+  lastLoginAt        DateTime? @map("last_login_at")
+  deletedAt          DateTime? @map("deleted_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
 
   company            Company?             @relation(fields: [companyId], references: [id], onDelete: Cascade)
   role               Role                 @relation(fields: [roleId], references: [id], onDelete: Restrict)
@@ -204,6 +210,7 @@ model User {
   updatedAssignments ScheduleAssignment[] @relation("AssignmentUpdatedBy")
   reviewedRequests   EmployeeRequest[]    @relation("RequestReviewedBy")
   notifications      Notification[]
+  requestAuditLogs   RequestAuditLog[]    @relation("RequestAuditPerformedBy")
 
   @@index([companyId])
   @@index([roleId])
@@ -365,17 +372,17 @@ model AbsenceType {
   companyId String @map("company_id")
 
   /// Fixed short code shown in the scheduler grid (e.g. "P"). Immutable.
-  code String
+  code        String
   /// Fixed full display name (e.g. "Poilsio diena"). Immutable.
-  name String
+  name        String
   /// Hex color used for the cell background (e.g. "#F59E0B").
-  color String @default("#F59E0B")
+  color       String  @default("#F59E0B")
   /// Optional manager-facing note — the only free-text field managers may edit.
   description String?
   /// True for the four seeded standard types. Legacy rows predating this
   /// model (kept only so historical assignments/requests still resolve)
   /// are false and hidden from every UI list.
-  isDefault Boolean @default(true) @map("is_default")
+  isDefault   Boolean @default(true) @map("is_default")
 
   active    Boolean  @default(true)
   createdAt DateTime @default(now()) @map("created_at")
@@ -480,6 +487,10 @@ model ScheduleAssignment {
   /// Who last created/edited this specific shift — the seed of a future
   /// per-cell version history.
   updatedBy       String? @map("updated_by")
+  /// Set when this row was auto-created/overwritten by an approved
+  /// EmployeeRequest — lets a later revocation find exactly which rows to
+  /// delete or restore, without guessing. Null for manually-managed shifts.
+  sourceRequestId String? @map("source_request_id")
 
   date  DateTime @db.Date
   notes String?
@@ -487,11 +498,12 @@ model ScheduleAssignment {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  schedule      Schedule       @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
-  employee      Employee       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  updater       User?          @relation("AssignmentUpdatedBy", fields: [updatedBy], references: [id], onDelete: SetNull)
-  shiftTemplate ShiftTemplate? @relation(fields: [shiftTemplateId], references: [id], onDelete: Restrict)
-  absenceType   AbsenceType?   @relation(fields: [absenceTypeId], references: [id], onDelete: Restrict)
+  schedule      Schedule         @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  employee      Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  updater       User?            @relation("AssignmentUpdatedBy", fields: [updatedBy], references: [id], onDelete: SetNull)
+  shiftTemplate ShiftTemplate?   @relation(fields: [shiftTemplateId], references: [id], onDelete: Restrict)
+  absenceType   AbsenceType?     @relation(fields: [absenceTypeId], references: [id], onDelete: Restrict)
+  sourceRequest EmployeeRequest? @relation(fields: [sourceRequestId], references: [id], onDelete: SetNull)
 
   @@unique([scheduleId, employeeId, date])
   @@index([scheduleId])
@@ -499,6 +511,7 @@ model ScheduleAssignment {
   @@index([scheduleId, date])
   @@index([shiftTemplateId])
   @@index([absenceTypeId])
+  @@index([sourceRequestId])
   @@map("schedule_assignments")
 }
 
@@ -539,6 +552,10 @@ enum RequestStatus {
   REJECTED
   /// Withdrawn by the employee themselves, only reachable while PENDING.
   CANCELLED
+  /// Was APPROVED (and synced into the Scheduler), then a manager reversed
+  /// that decision — kept distinct from REJECTED ("never approved") so the
+  /// audit trail and UI can say what actually happened.
+  REVOKED
 }
 
 model EmployeeRequest {
@@ -558,15 +575,48 @@ model EmployeeRequest {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  company     Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  employee    Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  absenceType AbsenceType @relation(fields: [absenceTypeId], references: [id], onDelete: Restrict)
-  reviewer    User?       @relation("RequestReviewedBy", fields: [reviewedBy], references: [id], onDelete: SetNull)
+  company             Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employee            Employee             @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  absenceType         AbsenceType          @relation(fields: [absenceTypeId], references: [id], onDelete: Restrict)
+  reviewer            User?                @relation("RequestReviewedBy", fields: [reviewedBy], references: [id], onDelete: SetNull)
+  scheduleAssignments ScheduleAssignment[]
+  auditLogs           RequestAuditLog[]
 
   @@index([companyId])
   @@index([employeeId])
   @@index([companyId, status])
   @@map("employee_requests")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Audit trail for the leave-approval <-> Scheduler sync. `details` stores
+// exactly what's needed to reverse an approval: which dates got a brand-new
+// absence row (delete on revoke) vs. which overwrote an existing shift
+// (restore the previous shiftTemplateId/notes on revoke). See
+// request-schedule-sync.service.ts for the shape written/read here.
+// ─────────────────────────────────────────────────────────────────────────
+
+enum AuditAction {
+  REQUEST_APPROVED
+  REQUEST_APPROVAL_REVOKED
+}
+
+model RequestAuditLog {
+  id          String      @id @default(uuid())
+  companyId   String      @map("company_id")
+  requestId   String      @map("request_id")
+  action      AuditAction
+  performedBy String      @map("performed_by")
+  details     Json?
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  company   Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  request   EmployeeRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  performer User            @relation("RequestAuditPerformedBy", fields: [performedBy], references: [id], onDelete: Restrict)
+
+  @@index([companyId])
+  @@index([requestId])
+  @@map("request_audit_logs")
 }
 
 // ─────────────────────────────────────────────────────────────────────────

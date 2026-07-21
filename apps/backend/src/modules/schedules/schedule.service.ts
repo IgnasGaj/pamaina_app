@@ -2,10 +2,17 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/config/prisma";
 import { scheduleRepository } from "@/modules/schedules/schedule.repository";
 import { scheduleAssignmentRepository } from "@/modules/schedules/schedule-assignment.repository";
-import { toAssignmentResponseDto, toScheduleResponseDto, toScheduleSummaryDto } from "@/modules/schedules/schedule.mapper";
 import {
+  toAbsenceEntryResponseDto,
+  toAssignmentResponseDto,
+  toScheduleResponseDto,
+  toScheduleSummaryDto,
+} from "@/modules/schedules/schedule.mapper";
+import {
+  AbsenceEntryResponseDto,
   CreateAssignmentDto,
   CreateScheduleDto,
+  ListAbsencesQuery,
   ListSchedulesQuery,
   ScheduleAssignmentResponseDto,
   ScheduleResponseDto,
@@ -189,6 +196,12 @@ export async function listSchedules(
     query,
   );
   return buildPaginatedResult(items.map(toScheduleSummaryDto), query, total);
+}
+
+/** Every approved-leave day within a date range, across however many months it spans — powers manager-dashboard "absent today/next week" widgets. */
+export async function listAbsences(companyId: string, query: ListAbsencesQuery): Promise<AbsenceEntryResponseDto[]> {
+  const assignments = await scheduleAssignmentRepository.findAbsencesInRange(companyId, query.from, query.to);
+  return assignments.map(toAbsenceEntryResponseDto);
 }
 
 export async function publishSchedule(companyId: string, userId: string, id: string): Promise<ScheduleResponseDto> {

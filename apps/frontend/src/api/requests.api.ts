@@ -1,6 +1,7 @@
 import { apiClient, unwrap, unwrapPaginated } from '@/lib/api-client'
 import type { PaginatedResult } from '@/types/api.types'
 import type {
+  ConflictPreviewEntry,
   CreateRequestPayload,
   EmployeeRequest,
   ListRequestsQuery,
@@ -19,8 +20,16 @@ export function createRequest(payload: CreateRequestPayload): Promise<EmployeeRe
   return unwrap(apiClient.post('/requests', payload))
 }
 
+export function getRequestConflicts(id: string): Promise<ConflictPreviewEntry[]> {
+  return unwrap(apiClient.get(`/requests/${id}/conflicts`))
+}
+
 export function approveRequest(id: string, payload: ReviewRequestPayload = {}): Promise<EmployeeRequest> {
   return unwrap(apiClient.post(`/requests/${id}/approve`, payload))
+}
+
+export function revokeRequest(id: string, payload: ReviewRequestPayload = {}): Promise<EmployeeRequest> {
+  return unwrap(apiClient.post(`/requests/${id}/revoke`, payload))
 }
 
 export function rejectRequest(id: string, payload: ReviewRequestPayload = {}): Promise<EmployeeRequest> {

@@ -4,6 +4,7 @@ import * as employeeService from "@/modules/employees/employee.service";
 import {
   CreateAssignmentDto,
   CreateScheduleDto,
+  ListAbsencesQuery,
   ListSchedulesQuery,
   UpdateAssignmentDto,
   UpdateScheduleDto,
@@ -27,6 +28,12 @@ export async function create(req: Request, res: Response): Promise<void> {
     req.body as CreateScheduleDto,
   );
   sendSuccess(res, schedule, 201);
+}
+
+export async function listAbsences(req: Request, res: Response): Promise<void> {
+  const query = req.query as unknown as ListAbsencesQuery;
+  const result = await scheduleService.listAbsences(req.user!.companyId!, query);
+  sendSuccess(res, result);
 }
 
 export async function getById(req: Request, res: Response): Promise<void> {

@@ -30,6 +30,10 @@ export type CreateRequestDto = z.infer<typeof createRequestSchema>;
 
 export const reviewRequestSchema = z.object({
   reviewComment: z.string().max(1000).optional(),
+  /// Only meaningful for approve: how to handle days where the employee
+  /// already has a shift scheduled. Defaults to removing the conflicting
+  /// shift, matching the approval-conflict dialog's recommended default.
+  conflictResolution: z.enum(["remove", "keep"]).default("remove"),
 });
 export type ReviewRequestDto = z.infer<typeof reviewRequestSchema>;
 
@@ -40,8 +44,18 @@ export const requestIdParamsSchema = z.object({
 export const listRequestsQuerySchema = paginationQuerySchema.extend({
   status: requestStatusSchema.optional(),
   employeeId: z.string().uuid().optional(),
+  /// Filters by the request's startDate, inclusive — lets dashboards ask for
+  /// "upcoming" approved leave without pulling every approved request ever.
+  startDateFrom: z.coerce.date().optional(),
+  startDateTo: z.coerce.date().optional(),
 });
 export type ListRequestsQuery = z.infer<typeof listRequestsQuerySchema>;
+
+export const conflictPreviewEntrySchema = z.object({
+  date: z.string(),
+  shiftTemplateName: z.string(),
+});
+export type ConflictPreviewEntryDto = z.infer<typeof conflictPreviewEntrySchema>;
 
 export const requestResponseSchema = z.object({
   id: z.string().uuid(),
@@ -49,6 +63,7 @@ export const requestResponseSchema = z.object({
   employeeId: z.string().uuid(),
   employeeName: z.string(),
   absenceTypeId: z.string().uuid(),
+  absenceTypeCode: z.string(),
   absenceTypeName: z.string(),
   absenceTypeColor: z.string(),
   startDate: z.string(),

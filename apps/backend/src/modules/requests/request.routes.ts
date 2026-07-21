@@ -37,11 +37,25 @@ router.get(
   asyncHandler(async (req, res) => requestController.getById(req, res)),
 );
 
+router.get(
+  "/:id/conflicts",
+  authorize(PERMISSIONS.REQUEST_MANAGE),
+  validate({ params: requestIdParamsSchema }),
+  asyncHandler(async (req, res) => requestController.getConflicts(req, res)),
+);
+
 router.post(
   "/:id/approve",
   authorize(PERMISSIONS.REQUEST_MANAGE),
   validate({ params: requestIdParamsSchema, body: reviewRequestSchema }),
   asyncHandler(async (req, res) => requestController.approve(req, res)),
+);
+
+router.post(
+  "/:id/revoke",
+  authorize(PERMISSIONS.REQUEST_MANAGE),
+  validate({ params: requestIdParamsSchema, body: reviewRequestSchema }),
+  asyncHandler(async (req, res) => requestController.revoke(req, res)),
 );
 
 router.post(

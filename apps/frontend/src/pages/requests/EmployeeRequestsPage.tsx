@@ -4,15 +4,23 @@ import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
 
 import { PageHeader } from '@/components/layout/PageHeader'
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { useApproveRequest, useRejectRequest, useRequests } from '@/hooks/useRequests'
+import {
+  useApproveRequest,
+  useRejectRequest,
+  useRequestConflicts,
+  useRequests,
+  useRevokeRequest,
+} from '@/hooks/useRequests'
 import { getErrorMessage } from '@/lib/errors'
 import { formatLongDate, type AppLocale } from '@/lib/date'
-import type { EmployeeRequest, RequestStatus } from '@/types/request.types'
+import type { ConflictPreviewEntry, EmployeeRequest, RequestStatus } from '@/types/request.types'
+import { ApprovalConflictDialog } from '@/pages/requests/ApprovalConflictDialog'
 import { RequestDetailsDialog } from '@/pages/requests/RequestDetailsDialog'
 
 const NONE_VALUE = '__all__'
@@ -22,6 +30,7 @@ const STATUS_BADGE_VARIANT: Record<RequestStatus, 'secondary' | 'success' | 'des
   APPROVED: 'success',
   REJECTED: 'destructive',
   CANCELLED: 'outline',
+  REVOKED: 'outline',
 }
 
 const STATUS_LABEL_KEYS: Record<RequestStatus, string> = {
@@ -29,6 +38,7 @@ const STATUS_LABEL_KEYS: Record<RequestStatus, string> = {
   APPROVED: 'requests.approved',
   REJECTED: 'requests.rejected',
   CANCELLED: 'requests.cancelled',
+  REVOKED: 'requests.revoked',
 }
 
 export function EmployeeRequestsPage() {
@@ -37,6 +47,10 @@ export function EmployeeRequestsPage() {
   const formatDate = (value: string) => formatLongDate(value.slice(0, 10), locale)
   const [statusFilter, setStatusFilter] = useState(NONE_VALUE)
   const [detailsRequest, setDetailsRequest] = useState<EmployeeRequest | undefined>(undefined)
+  const [conflictState, setConflictState] = useState<{ request: EmployeeRequest; conflicts: ConflictPreviewEntry[] } | null>(
+    null,
+  )
+  const [revokeRequestTarget, setRevokeRequestTarget] = useState<EmployeeRequest | undefined>(undefined)
 
   const requestsQuery = useRequests({
     pageSize: 100,
@@ -44,11 +58,26 @@ export function EmployeeRequestsPage() {
   })
   const approveRequest = useApproveRequest()
   const rejectRequest = useRejectRequest()
+  const requestConflicts = useRequestConflicts()
+  const revokeRequest = useRevokeRequest()
+
+  async function doApprove(request: EmployeeRequest, conflictResolution?: 'remove' | 'keep') {
+    try {
+      await approveRequest.mutateAsync({ id: request.id, payload: conflictResolution ? { conflictResolution } : undefined })
+      toast.success(t('requests.approved_toast'))
+    } catch (error) {
+      toast.error(getErrorMessage(error))
+    }
+  }
 
   async function handleApprove(request: EmployeeRequest) {
     try {
-      await approveRequest.mutateAsync({ id: request.id })
-      toast.success(t('requests.approved_toast'))
+      const conflicts = await requestConflicts.mutateAsync(request.id)
+      if (conflicts.length === 0) {
+        await doApprove(request)
+      } else {
+        setConflictState({ request, conflicts })
+      }
     } catch (error) {
       toast.error(getErrorMessage(error))
     }
@@ -60,6 +89,18 @@ export function EmployeeRequestsPage() {
       toast.success(t('requests.rejected_toast'))
     } catch (error) {
       toast.error(getErrorMessage(error))
+    }
+  }
+
+  async function handleRevoke() {
+    if (!revokeRequestTarget) return
+    try {
+      await revokeRequest.mutateAsync({ id: revokeRequestTarget.id })
+      toast.success(t('requests.revoked_toast'))
+    } catch (error) {
+      toast.error(getErrorMessage(error))
+    } finally {
+      setRevokeRequestTarget(undefined)
     }
   }
 
@@ -164,6 +205,11 @@ export function EmployeeRequestsPage() {
                             </Button>
                           </>
                         )}
+                        {request.status === 'APPROVED' && (
+                          <Button size="sm" variant="outline" onClick={() => setRevokeRequestTarget(request)}>
+                            {t('requests.revoke')}
+                          </Button>
+                        )}
                         <Button size="sm" variant="ghost" onClick={() => setDetailsRequest(request)}>
                           {t('requests.details')}
                         </Button>
@@ -177,6 +223,28 @@ export function EmployeeRequestsPage() {
       </Card>
 
       <RequestDetailsDialog request={detailsRequest} onOpenChange={(open) => !open && setDetailsRequest(undefined)} />
+
+      {conflictState && (
+        <ApprovalConflictDialog
+          open={Boolean(conflictState)}
+          onOpenChange={(open) => !open && setConflictState(null)}
+          conflicts={conflictState.conflicts}
+          isLoading={approveRequest.isPending}
+          onConfirm={(resolution) => {
+            void doApprove(conflictState.request, resolution).then(() => setConflictState(null))
+          }}
+        />
+      )}
+
+      <ConfirmDialog
+        open={Boolean(revokeRequestTarget)}
+        onOpenChange={(open) => !open && setRevokeRequestTarget(undefined)}
+        title={t('requests.revokeConfirmTitle')}
+        description={t('requests.revokeConfirmDescription')}
+        confirmLabel={t('requests.revoke')}
+        isLoading={revokeRequest.isPending}
+        onConfirm={() => void handleRevoke()}
+      />
     </div>
   )
 }

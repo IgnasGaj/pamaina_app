@@ -10,6 +10,7 @@ export function toCompanySettingsResponseDto(settings: CompanySettings): Company
     businessType: settings.businessType,
     workWeekType: settings.workWeekType,
     vacationPolicy: settings.vacationPolicy,
+    annualVacationDays: settings.annualVacationDays,
     onboardingCompletedAt: settings.onboardingCompletedAt?.toISOString() ?? null,
   };
 }
